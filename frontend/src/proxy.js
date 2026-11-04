@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-// Refreshes an expiring session before pages render. Access checks live in the pages and API routes.
+// Pages a signed-out visitor may open. API routes answer with their own 401 instead of a redirect.
+const PUBLIC_PATHS = ["/giris", "/sifre-yenile", "/auth", "/api"];
+
+function isPublic(pathname) {
+  return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
+// Refreshes an expiring session and sends signed-out visitors straight to /giris.
+// This is only the first gate: pages and API routes still check aal2 and the profile themselves.
 export async function proxy(request) {
   let response = NextResponse.next({ request });
 
@@ -23,7 +31,15 @@ export async function proxy(request) {
     }
   );
 
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+
+  if (!data?.claims && !isPublic(request.nextUrl.pathname)) {
+    const redirect = NextResponse.redirect(new URL("/giris", request.url));
+    // Keep any cookie changes (e.g. a cleared expired session) on the redirect response too.
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    return redirect;
+  }
+
   return response;
 }
 
