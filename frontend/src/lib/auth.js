@@ -1,4 +1,6 @@
 import "server-only";
+import { io } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 
@@ -19,4 +21,24 @@ export async function hasPanelAccess(userId) {
     .maybeSingle();
   if (error) throw error;
   return Boolean(data?.active);
+}
+
+// Panel pages call this. The profile is read as the user, so RLS only returns it at aal2;
+// an inactive account is sent back to /giris, where the access check signs it out.
+export async function requirePanelProfile() {
+  // getClaims() compares the token expiry with the current time (Date.now()). io() tells Next.js
+  // this check belongs to the real request, so it never runs while a page shell is prerendered.
+  await io();
+  const claims = await getCurrentClaims();
+  if (!claims || claims.aal !== "aal2") redirect("/giris");
+
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, active")
+    .eq("id", claims.sub)
+    .maybeSingle();
+  if (!profile?.active) redirect("/giris");
+
+  return profile;
 }

@@ -8,8 +8,9 @@ function isPublic(pathname) {
   return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
-// Refreshes an expiring session and sends signed-out visitors straight to /giris.
-// This is only the first gate: pages and API routes still check aal2 and the profile themselves.
+// Refreshes an expiring session and sends visitors without a fully verified session to /giris.
+// It runs on every request, including moves between panel pages that do not re-run the layout.
+// It is only the first gate: pages, API routes and RLS still check access themselves.
 export async function proxy(request) {
   let response = NextResponse.next({ request });
 
@@ -33,7 +34,9 @@ export async function proxy(request) {
 
   const { data } = await supabase.auth.getClaims();
 
-  if (!data?.claims && !isPublic(request.nextUrl.pathname)) {
+  // aal1 means the password was right but the 6-digit code was not entered yet;
+  // /giris picks that session up again and asks for the code.
+  if (data?.claims?.aal !== "aal2" && !isPublic(request.nextUrl.pathname)) {
     const redirect = NextResponse.redirect(new URL("/giris", request.url));
     // Keep any cookie changes (e.g. a cleared expired session) on the redirect response too.
     response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));

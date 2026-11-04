@@ -16,8 +16,8 @@ export default function LogoutButton() {
   }
 
   return (
-    <button className="auth-btn" type="button" onClick={logout} disabled={busy}>
-      {busy ? "Çıkış yapılıyor…" : "Çıkış yap"}
+    <button className="logout" type="button" onClick={logout} disabled={busy}>
+      {busy ? "Çıkılıyor…" : "⇥ Çıkış"}
     </button>
   );
 }
