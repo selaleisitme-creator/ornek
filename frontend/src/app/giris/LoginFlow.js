@@ -96,7 +96,7 @@ export default function LoginFlow() {
   function finish() {
     credentials.current = null;
     go("done");
-    router.replace("/panel");
+    router.replace("/anasayfa");
     router.refresh();
   }
 

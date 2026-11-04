@@ -1,0 +1,29 @@
+/* Temporary page body; delete together with PagePlaceholder.js once every module is built. */
+.placeholder-head { margin-bottom: 20px; }
+
+.placeholder-eyebrow {
+  margin: 0 0 6px;
+  color: #244d9c;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.placeholder-head h1 {
+  margin: 0 0 6px;
+  color: #172b4d;
+  font-size: clamp(24px, 2.4vw, 30px);
+  letter-spacing: -.02em;
+}
+
+.placeholder-head p:last-child { margin: 0; color: #42536b; }
+
+.placeholder-box {
+  padding: 48px 24px;
+  border: 1px dashed #aab8cc;
+  border-radius: 16px;
+  background: #fff;
+  color: #42536b;
+  text-align: center;
+}
