@@ -11,9 +11,16 @@ export default function StepUpDialog({ open, reason, onConfirmed, onCancel }) {
   const [state, submit, pending] = useActionState(confirmStepUp, null);
   const [code, setCode] = useState("");
   const form = useRef(null);
+  const handled = useRef(null);
 
+  // Each successful verification is reported once. Without the ref, a parent that passes a new
+  // onConfirmed function on every render would run the protected action again and again.
   useEffect(() => {
-    if (state?.ok) onConfirmed?.();
+    if (state?.ok && state !== handled.current) {
+      handled.current = state;
+      setCode("");
+      onConfirmed?.();
+    }
   }, [state, onConfirmed]);
 
   return (
