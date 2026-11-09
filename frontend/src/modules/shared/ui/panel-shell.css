@@ -14,6 +14,15 @@ body:has(.panel-shell) {
   background: #f2f5f6;
 }
 
+/* globals.css sets overflow-x: hidden on html and body (against sideways scrolling on the login pages).
+   With both set, the body becomes its own scroll box that never scrolls, and the menu's position: sticky
+   sticks to that box instead of the window, so the menu scrolled away with the page. `clip` cuts off
+   sideways overflow the same way without creating a scroll box, so the menu stays put. */
+html:has(.panel-shell),
+body:has(.panel-shell) {
+  overflow-x: clip;
+}
+
 .panel-shell {
   --panel-zoom: 1;
   --content-max: 1680px;
