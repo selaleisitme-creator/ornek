@@ -6,16 +6,19 @@ import UsersCard from "./UsersCard";
 import { listUsers } from "../server/usersService";
 import GeneralSettingsForm from "./GeneralSettingsForm";
 import SecuritySettingsForm from "./SecuritySettingsForm";
+import WebBookingCard from "./WebBookingCard";
+import { getRequestSummary } from "@/modules/randevular/server/appointmentRequestsRepository";
 import "./settings.css";
 
 // Ayarlar. Every staff member sees the general settings; admin-only cards are not rendered for others
 // (their actions check the role again, and the database once more).
 export default async function SettingsPage() {
   const staff = await getStaffProfile();
-  const [settings, account, users] = await Promise.all([
+  const [settings, account, users, booking] = await Promise.all([
     getSettings(),
     getAccountInfo(),
     staff?.isAdmin ? listUsers() : null,
+    getRequestSummary(),
   ]);
 
   return (
@@ -32,6 +35,7 @@ export default async function SettingsPage() {
         <div className="settings-column">
           <GeneralSettingsForm settings={settings} />
           {staff?.isAdmin && <SecuritySettingsForm idleLogoutMinutes={settings.idle_logout_minutes} />}
+          <WebBookingCard pendingCount={booking.pendingCount} lastRequestAt={booking.lastRequestAt} />
         </div>
         <div className="settings-column">
           <AccountCard email={account.email} role={staff?.role} twoFactorActive={account.twoFactorActive} />
