@@ -53,6 +53,7 @@ async function assertAdminRemains(target, next) {
 export async function listUsers() {
   const [profiles, authUsers] = await Promise.all([repo.listProfiles(), repo.listAuthUsers()]);
   const byId = new Map(authUsers.map((user) => [user.id, user]));
+  const withTwoFactor = await repo.listUserIdsWithTwoFactor(profiles.map((profile) => profile.id));
   const today = todayInClinic();
 
   return profiles.map((profile) => {
@@ -69,7 +70,7 @@ export async function listUsers() {
       canViewNationalId: profile.can_view_national_id,
       canViewAccounting: profile.can_view_accounting,
       lastSignInAt: auth?.last_sign_in_at ?? null,
-      twoFactor: Boolean(auth?.factors?.some((factor) => factor.status === "verified")),
+      twoFactor: withTwoFactor.has(profile.id),
       status: !profile.active ? "closed" : expired ? "expired" : invited ? "invited" : "active",
     };
   });
