@@ -1,35 +1,20 @@
 "use client";
 
 import { useActionState } from "react";
-import PhoneInput from "@/modules/shared/ui/PhoneInput";
 import { saveGeneralSettings } from "../server/actions";
 import { useResultToast } from "./useResultToast";
 
-// Splits "+905321234567" back into country code and number for the phone box.
-function splitPhone(phone) {
-  const match = /^(\+(?:994|995|359|90|49|44|33|31|32|43|41|30|1))(\d+)$/.exec(phone ?? "");
-  return match ? { country: match[1], number: match[2] } : { country: "+90", number: "" };
-}
-
+// Maintenance follow-up and appointment reminders. The WhatsApp number has its own card.
 export default function GeneralSettingsForm({ settings }) {
   const [result, submit, pending] = useActionState(saveGeneralSettings, null);
   useResultToast(result, "Ayarlar kaydedildi.");
-  const phone = splitPhone(settings.whatsapp_number);
 
   return (
     <form action={submit} className="settings-card">
       <header>
         <h2>Genel</h2>
-        <p>Hasta iletişimi ve randevu hatırlatmaları.</p>
+        <p>Bakım takibi ve randevu hatırlatmaları.</p>
       </header>
-
-      <PhoneInput
-        id="whatsapp"
-        name="whatsapp_number"
-        label="Klinik WhatsApp numarası"
-        defaultCountry={phone.country}
-        defaultNumber={phone.number}
-      />
 
       <label className="ui-field" htmlFor="maintenance">
         <span className="ui-label">Bakım iletişim aralığı (ay)</span>

@@ -44,6 +44,19 @@ export async function listAuthUsers() {
   return check(await getAdminClient().auth.admin.listUsers({ page: 1, perPage: 1000 })).users;
 }
 
+// The user list from listUsers() does not carry the two-step factors, so each user's factors are asked for
+// separately (a handful of accounts, in parallel). Returns the ids that have a verified authenticator.
+export async function listUserIdsWithTwoFactor(userIds) {
+  const admin = getAdminClient();
+  const results = await Promise.all(
+    userIds.map(async (userId) => {
+      const factors = check(await admin.auth.admin.mfa.listFactors({ userId })).factors;
+      return factors.some((f) => f.factor_type === "totp" && f.status === "verified") ? userId : null;
+    })
+  );
+  return new Set(results.filter(Boolean));
+}
+
 export async function getAuthUser(id) {
   return check(await getAdminClient().auth.admin.getUserById(id)).user;
 }

@@ -20,6 +20,14 @@ export async function saveGeneralSettings(_previous, form) {
   });
 }
 
+export async function saveWhatsAppNumber(_previous, form) {
+  return toActionResult(async () => {
+    await requireStaff();
+    await settingsService.saveWhatsAppNumber(form);
+    refresh();
+  });
+}
+
 // Everyone changes only their own password: the Supabase client acts as the signed-in user.
 export async function changePassword(_previous, form) {
   return toActionResult(async () => {

@@ -19,14 +19,16 @@ function wholeNumber(value, min, max, label) {
   return number;
 }
 
-export async function saveGeneralSettings(form) {
+export async function saveWhatsAppNumber(form) {
   const whatsapp = String(form.get("whatsapp_number") ?? "").trim();
   if (whatsapp && !/^\+\d{8,15}$/.test(whatsapp)) {
     throw new ValidationError("WhatsApp numarasını ülke koduyla birlikte girin.");
   }
+  await updateSettings({ whatsapp_number: whatsapp || null });
+}
 
+export async function saveGeneralSettings(form) {
   await updateSettings({
-    whatsapp_number: whatsapp || null,
     maintenance_interval_months: wholeNumber(form.get("maintenance_interval_months"), 1, 36, "Bakım aralığı"),
     reminders_enabled: form.get("reminders_enabled") === "on",
     remind_3d: form.get("remind_3d") === "on",

@@ -34,7 +34,7 @@
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   min-height: 40px; padding: 8px 16px;
   border: 1px solid transparent; border-radius: 10px;
-  font: 600 14px/1.2 inherit; cursor: pointer;
+  font: 600 14px/1.2 inherit; cursor: pointer; text-decoration: none; /* also used on links */
   transition: background .15s, border-color .15s;
 }
 .ui-button:disabled { opacity: .6; cursor: not-allowed; }
