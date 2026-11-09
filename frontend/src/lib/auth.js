@@ -15,14 +15,17 @@ export async function getCurrentClaims() {
 }
 
 // Profiles are only readable at aal2 through RLS, so the access check before the code step uses the secret key.
+// An account whose access end date has passed (a finished internship) is refused here too, so it is signed
+// out at the password step instead of reaching the panel's "access ended" screen. (Added 2026-11-09.)
 export async function hasPanelAccess(userId) {
   const { data, error } = await getAdminClient()
     .from("profiles")
-    .select("active")
+    .select("active, access_until")
     .eq("id", userId)
     .maybeSingle();
   if (error) throw error;
-  return Boolean(data?.active);
+  if (!data?.active) return false;
+  return !data.access_until || data.access_until >= todayInClinic();
 }
 
 // Panel pages call this. The profile is read as the user, so RLS only returns it at aal2;
