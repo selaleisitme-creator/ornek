@@ -16,6 +16,8 @@ export async function toActionResult(work) {
     unstable_rethrow(error); // redirect() and other Next.js control flow must pass through
     if (error instanceof StepUpRequiredError) return { ok: false, stepUpRequired: true };
     if (error instanceof AccessDeniedError) return { ok: false, error: "Bu işlem için yetkiniz yok." };
+    // A service's own check failed; its message is already written for the user.
+    if (error?.name === "ValidationError") return { ok: false, error: error.message };
     console.error(error);
     return { ok: false, error: toUserMessage(error) };
   }
