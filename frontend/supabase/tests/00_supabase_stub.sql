@@ -11,13 +11,39 @@ create function auth.jwt() returns jsonb language sql stable as
 create function auth.uid() returns uuid language sql stable as
   $$ select nullif(auth.jwt() ->> 'sub', '')::uuid $$;
 
+-- Mirrors the live table (checked 2026-11-09). Live, profiles_role_check is (role = 'admin'); here it also lets
+-- 'staff' in, because the tests need a non-admin user before 008 widens the rule. The name matches, so 008's
+-- drop-and-recreate runs exactly as it will on Supabase.
 create table public.profiles (
   id                   uuid primary key,
   full_name            text,
-  role                 text not null default 'staff',
+  role                 text not null default 'admin',
   active               boolean not null default true,
-  can_view_national_id boolean not null default false
+  can_view_national_id boolean not null default false,
+  last_login_at        timestamptz,
+  constraint profiles_role_check check (role in ('admin', 'staff'))
 );
+
+-- Supabase Storage keeps buckets and files in its own schema.
+create schema storage;
+create table storage.buckets (
+  id                 text primary key,
+  name               text not null,
+  public             boolean not null default false,
+  file_size_limit    bigint,
+  allowed_mime_types text[]
+);
+create table storage.objects (
+  id         uuid primary key default gen_random_uuid(),
+  bucket_id  text references storage.buckets (id),
+  name       text not null,
+  owner      uuid default auth.uid(),
+  created_at timestamptz not null default now()
+);
+alter table storage.objects enable row level security;
+grant usage on schema storage to anon, authenticated;
+grant select, insert, update, delete on storage.objects to anon, authenticated;
+grant select on storage.buckets to anon, authenticated;
 
 create function public.is_mfa_verified() returns boolean language sql stable as
   $$ select coalesce((auth.jwt() ->> 'aal') = 'aal2', false) $$;
