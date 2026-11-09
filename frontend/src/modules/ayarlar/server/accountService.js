@@ -1,20 +1,20 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentClaims } from "@/lib/auth";
 import { authMessage } from "@/lib/authMessages";
 import { missingPasswordRules } from "@/lib/passwordRules";
 import { ValidationError } from "./settingsService";
 
 // "Hesabım": what the signed-in user can see and change about their own account.
 
+// Read from the signed session token (the same claims every page already checks), not from extra calls
+// to Supabase: those could fail while the session was being refreshed, and the card then showed "—".
+// Anyone who can see this page has passed the 6-digit code (aal2), so two-step is on by definition.
 export async function getAccountInfo() {
-  const supabase = await createClient();
-  const [{ data: user }, { data: factors }] = await Promise.all([
-    supabase.auth.getUser(),
-    supabase.auth.mfa.listFactors(),
-  ]);
+  const claims = await getCurrentClaims();
   return {
-    email: user?.user?.email ?? null,
-    twoFactorActive: Boolean(factors?.totp?.some((factor) => factor.status === "verified")),
+    email: claims?.email ?? null,
+    twoFactorActive: claims?.aal === "aal2",
   };
 }
 
