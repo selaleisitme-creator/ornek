@@ -26,12 +26,19 @@ export default async function SettingsPage() {
         <p>Klinik tercihleri, hesabınız{staff?.isAdmin ? " ve kullanıcılar" : ""}.</p>
       </header>
 
+      {/* Two independent columns instead of grid rows: in a grid, Güvenlik had to wait below the tall
+          Hesabım card and left an empty gap under Genel. On narrow screens the columns stack. */}
       <div className="settings-grid">
-        <GeneralSettingsForm settings={settings} />
-        <AccountCard email={account.email} role={staff?.role} twoFactorActive={account.twoFactorActive} />
-        {staff?.isAdmin && <SecuritySettingsForm idleLogoutMinutes={settings.idle_logout_minutes} />}
-        {staff?.isAdmin && <UsersCard users={users} currentUserId={staff.userId} />}
+        <div className="settings-column">
+          <GeneralSettingsForm settings={settings} />
+          {staff?.isAdmin && <SecuritySettingsForm idleLogoutMinutes={settings.idle_logout_minutes} />}
+        </div>
+        <div className="settings-column">
+          <AccountCard email={account.email} role={staff?.role} twoFactorActive={account.twoFactorActive} />
+        </div>
       </div>
+
+      {staff?.isAdmin && <UsersCard users={users} currentUserId={staff.userId} />}
     </section>
   );
 }
