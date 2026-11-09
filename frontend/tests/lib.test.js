@@ -132,6 +132,13 @@ describe("whatsapp", () => {
     expect(whatsappLink("+905321234567", "Merhaba Ali Bey")).toBe("https://wa.me/905321234567?text=Merhaba%20Ali%20Bey");
     expect(whatsappLink("")).toBeNull();
   });
+
+  it("builds a WhatsApp Web link for computers", () => {
+    expect(whatsappLink("+905321234567", "Merhaba Ali Bey", { web: true })).toBe(
+      "https://web.whatsapp.com/send?phone=905321234567&text=Merhaba%20Ali%20Bey"
+    );
+    expect(whatsappLink("+905321234567", "", { web: true })).toBe("https://web.whatsapp.com/send?phone=905321234567");
+  });
 });
 
 describe("database errors", () => {

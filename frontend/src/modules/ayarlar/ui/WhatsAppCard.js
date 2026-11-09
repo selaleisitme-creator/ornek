@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import PhoneInput from "@/modules/shared/ui/PhoneInput";
 import { COUNTRY_CODES, formatPhone } from "@/lib/phone";
-import { whatsappLink } from "@/lib/whatsapp";
+import { useWhatsAppLink } from "@/modules/shared/ui/useWhatsAppLink";
 import { saveWhatsAppNumber } from "../server/actions";
 import { useResultToast } from "./useResultToast";
 
@@ -22,7 +22,7 @@ export default function WhatsAppCard({ whatsappNumber }) {
   const [result, submit, pending] = useActionState(saveWhatsAppNumber, null);
   useResultToast(result, "WhatsApp numarası kaydedildi.");
   const phone = splitPhone(whatsappNumber);
-  const link = whatsappLink(whatsappNumber);
+  const link = useWhatsAppLink(whatsappNumber);
 
   return (
     <form action={submit} className="settings-card">
