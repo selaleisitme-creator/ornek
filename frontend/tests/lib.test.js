@@ -5,6 +5,16 @@ import { formatPhone, normalizePhone } from "@/lib/phone";
 import { normalizeGtin, parseScan } from "@/lib/gs1";
 import { whatsappLink } from "@/lib/whatsapp";
 import { toUserMessage } from "@/lib/postgresErrors";
+import { missingPasswordRules } from "@/lib/passwordRules";
+
+describe("password rules", () => {
+  it("lists exactly what a password still misses", () => {
+    expect(missingPasswordRules("Selale2026x")).toEqual([]);
+    expect(missingPasswordRules("selale2026x")).toEqual(["Bir büyük harf"]);
+    expect(missingPasswordRules("Kısa1")).toEqual(["En az 10 karakter"]);
+    expect(missingPasswordRules("ŞELALEİŞİTME")).toEqual(["Bir küçük harf", "Bir rakam"]);
+  });
+});
 
 describe("money", () => {
   it("reads the clinic's way of writing amounts", () => {

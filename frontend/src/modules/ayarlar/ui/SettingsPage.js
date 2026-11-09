@@ -1,5 +1,7 @@
 import { getStaffProfile } from "@/lib/auth";
 import { getSettings } from "../server/settingsRepository";
+import { getAccountInfo } from "../server/accountService";
+import AccountCard from "./AccountCard";
 import GeneralSettingsForm from "./GeneralSettingsForm";
 import SecuritySettingsForm from "./SecuritySettingsForm";
 import "./settings.css";
@@ -8,7 +10,7 @@ import "./settings.css";
 // (their actions check the role again, and the database once more).
 export default async function SettingsPage() {
   const staff = await getStaffProfile();
-  const settings = await getSettings();
+  const [settings, account] = await Promise.all([getSettings(), getAccountInfo()]);
 
   return (
     <section className="settings-page">
@@ -20,6 +22,7 @@ export default async function SettingsPage() {
 
       <div className="settings-grid">
         <GeneralSettingsForm settings={settings} />
+        <AccountCard email={account.email} role={staff?.role} twoFactorActive={account.twoFactorActive} />
         {staff?.isAdmin && <SecuritySettingsForm idleLogoutMinutes={settings.idle_logout_minutes} />}
       </div>
     </section>
