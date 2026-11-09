@@ -1,4 +1,4 @@
--- Tests for 007_integrity_fixes.sql. Each check prints PASS or FAIL; an ERROR line is also a failure.
+-- Tests for 007_integrity_fixes.sql (written against the latest schema: the ID helpers are 008 functions). Each check prints PASS or FAIL; an ERROR line is also a failure.
 -- Run with migrations up to 006 to see the original bugs (FAIL), and with 007 to see them fixed.
 \set ON_ERROR_STOP off
 \pset footer off
@@ -6,6 +6,8 @@
 -- ---------------------------------------------------------------------------
 -- Helpers
 -- ---------------------------------------------------------------------------
+-- Every test file starts from its own helper schema, so the files can run one after another in one database.
+drop schema if exists t cascade;
 create schema t;
 grant usage on schema t to anon, authenticated;
 
@@ -98,17 +100,18 @@ set role authenticated;
 select t.ok('E1 even the admin cannot read the table directly', (select count(*) from public.patient_national_ids) = 0);
 select t.ok('E2 reveal returns the encrypted value', public.reveal_national_id(1) = 'cipher-ali');
 select t.ok('E3 the reveal was logged', (select count(*) from public.national_id_views where patient_id = 1) = 1);
-select t.ok('E4 the admin sees the last four digits', (select last4 from public.patient_national_id_last4 where patient_id = 1) = '1234');
+-- Since 008 the masked digits and the "on file" flag come from functions instead of views.
+select t.ok('E4 the admin sees the last four digits', (select last4 from public.national_id_last4(array[1::bigint])) = '1234');
 select t.as_user('11111111-1111-1111-1111-111111111111');
 select t.expect_error('E5 staff without permission cannot reveal', 'select public.reveal_national_id(1)', 'not allowed');
-select t.ok('E6 staff without permission sees no last four digits', (select count(*) from public.patient_national_id_last4) = 0);
+select t.expect_error('E6 staff without permission gets no last four digits', 'select * from public.national_id_last4(array[1::bigint])', 'not allowed');
 select public.save_national_id(2, 'cipher-ayse', '5678');
-select t.ok('E7 staff can enter the ID of a patient without one', exists (select 1 from public.patient_national_id_presence where patient_id = 2));
+select t.ok('E7 staff can enter the ID of a patient without one', exists (select 1 from public.national_id_presence(array[2::bigint])));
 select t.expect_error('E8 staff cannot overwrite an existing ID', 'select public.save_national_id(1, ''x'', ''0000'')', 'permission');
 
 \echo '--- F: anonymous visitors get nothing'
 set role anon;
-select t.expect_error('F1 anon cannot query the presence view', 'select * from public.patient_national_id_presence', 'permission denied');
+select t.expect_error('F1 anon cannot ask which IDs exist', 'select * from public.national_id_presence(array[1::bigint])', 'permission denied');
 select t.expect_error('F2 anon cannot call reveal', 'select public.reveal_national_id(1)', 'permission denied');
 set role authenticated;
 
