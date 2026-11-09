@@ -31,19 +31,17 @@ export default function WhatsAppCard({ whatsappNumber }) {
         <p>Hatırlatma ve bakım mesajlarının taslağı bu numarayla açılır; mesajı siz gönderirsiniz.</p>
       </header>
 
-      <PhoneInput
-        id="whatsapp"
-        name="whatsapp_number"
-        label="Klinik WhatsApp numarası"
-        defaultCountry={phone.country}
-        defaultNumber={phone.number}
-      />
-
-      <p className="settings-hint" style={{ margin: 0 }}>
-        Kayıtlı numara: <strong>{whatsappNumber ? formatPhone(whatsappNumber) : "henüz girilmedi"}</strong>
-      </p>
-
-      <footer>
+      {/* Number and buttons on one row, so the card stays short; on narrow screens the buttons wrap below. */}
+      <div className="settings-inline-row">
+        <div className="settings-inline-grow">
+          <PhoneInput
+            id="whatsapp"
+            name="whatsapp_number"
+            label="Klinik WhatsApp numarası"
+            defaultCountry={phone.country}
+            defaultNumber={phone.number}
+          />
+        </div>
         {link ? (
           <a className="ui-button ui-button-ghost" href={link} target="_blank" rel="noopener noreferrer">
             WhatsApp&apos;ı aç ↗
@@ -56,7 +54,11 @@ export default function WhatsAppCard({ whatsappNumber }) {
         <button type="submit" className="ui-button ui-button-primary" disabled={pending}>
           {pending ? "Kaydediliyor…" : "Kaydet"}
         </button>
-      </footer>
+      </div>
+
+      <p className="settings-hint" style={{ margin: 0 }}>
+        Kayıtlı numara: <strong>{whatsappNumber ? formatPhone(whatsappNumber) : "henüz girilmedi"}</strong>
+      </p>
     </form>
   );
 }

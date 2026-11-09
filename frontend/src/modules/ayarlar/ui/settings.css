@@ -22,6 +22,11 @@
 .settings-wide { grid-column: 1 / -1; }
 
 .settings-number { max-width: 140px; }
+
+/* A field with its buttons on the same line (WhatsApp card). Buttons line up with the input, not the label. */
+.settings-inline-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+.settings-inline-grow { flex: 1 1 300px; min-width: 0; }
+.settings-inline-row > .ui-button { min-height: 42px; }
 .settings-hint { color: var(--ui-muted); font-size: 13px; }
 
 .settings-checks { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
