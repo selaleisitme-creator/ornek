@@ -7,6 +7,7 @@ import { listUsers } from "../server/usersService";
 import GeneralSettingsForm from "./GeneralSettingsForm";
 import SecuritySettingsForm from "./SecuritySettingsForm";
 import WebBookingCard from "./WebBookingCard";
+import WhatsAppCard from "./WhatsAppCard";
 import { getRequestSummary } from "@/modules/randevular/server/appointmentRequestsRepository";
 import "./settings.css";
 
@@ -39,6 +40,7 @@ export default async function SettingsPage() {
         </div>
         <div className="settings-column">
           <AccountCard email={account.email} role={staff?.role} twoFactorActive={account.twoFactorActive} />
+          <WhatsAppCard whatsappNumber={settings.whatsapp_number} />
         </div>
       </div>
 
