@@ -3,6 +3,7 @@
 
 create role anon nologin;
 create role authenticated nologin;
+create role service_role nologin bypassrls;  -- the secret key's role
 create schema auth;
 
 -- Supabase reads the signed-in user from the request's JWT; the tests set it with set_config().
@@ -62,6 +63,8 @@ create table public.appointment_requests (
 alter table public.appointment_requests enable row level security;
 
 grant usage on schema public, auth to anon, authenticated;
+-- Created before the default privileges below, so granted here like Supabase does for every public table.
+grant select, insert, update, delete on public.profiles, public.appointment_requests to anon, authenticated;
 
 -- Supabase grants table rights to these roles by default and lets RLS decide; mirror that.
 alter default privileges in schema public grant select, insert, update, delete on tables to anon, authenticated;
