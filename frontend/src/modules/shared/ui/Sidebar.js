@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "./LogoutButton";
+import { usePanelSession } from "./panelSessionStore";
 
 // Icons are the same strokes as the approved design (selale-admin/son.html).
 // "primary" items stay in the phone's bottom bar; the rest move into its "Menü" sheet.
@@ -46,6 +47,9 @@ const NAV_ITEMS = [
   {
     href: "/muhasebe",
     label: "Muhasebe 🔒",
+    // Hidden from anyone without the accounting permission (interns never have it).
+    // The page and the database check it again; this only keeps the menu honest.
+    requires: "accounting",
     icon: (
       <>
         <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -71,7 +75,10 @@ const NAV_ITEMS = [
 ];
 
 const PRIMARY_ITEMS = NAV_ITEMS.filter((item) => item.primary);
-const EXTRA_ITEMS = NAV_ITEMS.filter((item) => !item.primary);
+
+function allowed(item, session) {
+  return item.requires !== "accounting" || session.canViewAccounting;
+}
 
 // A sub-page such as /hastalar/123 keeps "Hastalar" highlighted.
 function isActive(pathname, href) {
@@ -105,8 +112,10 @@ function NavLink({ item, pathname, onNavigate }) {
 // unknown param is added (e.g. a patient card at /hastalar/[id]), wrap this component in <Suspense>.
 export default function Sidebar() {
   const pathname = usePathname();
+  const session = usePanelSession();
   const [moreOpen, setMoreOpen] = useState(false);
-  const extraActive = EXTRA_ITEMS.some((item) => isActive(pathname, item.href));
+  const extraItems = NAV_ITEMS.filter((item) => !item.primary && allowed(item, session));
+  const extraActive = extraItems.some((item) => isActive(pathname, item.href));
   const close = () => setMoreOpen(false);
 
   useEffect(() => {
@@ -154,7 +163,7 @@ export default function Sidebar() {
         </button>
 
         <div className="side-group side-extra" id="side-extra">
-          {EXTRA_ITEMS.map((item) => (
+          {extraItems.map((item) => (
             <NavLink key={item.href} item={item} pathname={pathname} onNavigate={close} />
           ))}
           <LogoutButton />

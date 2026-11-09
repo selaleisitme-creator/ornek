@@ -1,6 +1,9 @@
 import { Suspense } from "react";
 import PanelShell from "@/modules/shared/ui/PanelShell";
-import { requirePanelProfile } from "@/lib/auth";
+import PanelSession from "@/modules/shared/ui/PanelSession";
+import AccessEnded from "@/modules/shared/ui/AccessEnded";
+import { getStaffProfile, requirePanelProfile } from "@/lib/auth";
+import { getIdleLogoutMinutes } from "@/modules/ayarlar/server/settingsRepository";
 
 // viewport-fit=cover lets the phone menu read env(safe-area-inset-*) and stay clear of the
 // iPhone home bar and notch. Set here, not in the root layout, so the login pages are unchanged.
@@ -26,5 +29,20 @@ export default function PanelLayout({ children }) {
 // request and RLS protects the data itself, so this check only has to catch a fresh load.
 async function PanelAccess({ children }) {
   await requirePanelProfile();
-  return children;
+
+  // An expired internship (access_until in the past) gets a message instead of a redirect: the login page
+  // would let the account through again and the two would bounce forever. RLS already returns no data.
+  const staff = await getStaffProfile();
+  if (!staff) return <AccessEnded />;
+
+  return (
+    <>
+      <PanelSession
+        canViewAccounting={staff.canViewAccounting}
+        isAdmin={staff.isAdmin}
+        idleLogoutMinutes={await getIdleLogoutMinutes()}
+      />
+      {children}
+    </>
+  );
 }
