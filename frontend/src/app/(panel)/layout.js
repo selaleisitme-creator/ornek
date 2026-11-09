@@ -38,6 +38,7 @@ async function PanelAccess({ children }) {
   return (
     <>
       <PanelSession
+        sessionId={staff.sessionId}
         canViewAccounting={staff.canViewAccounting}
         isAdmin={staff.isAdmin}
         idleLogoutMinutes={await getIdleLogoutMinutes()}

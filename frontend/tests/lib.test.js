@@ -6,6 +6,30 @@ import { normalizeGtin, parseScan } from "@/lib/gs1";
 import { whatsappLink } from "@/lib/whatsapp";
 import { toUserMessage } from "@/lib/postgresErrors";
 import { missingPasswordRules } from "@/lib/passwordRules";
+import { formatIdleCookie, isIdleExpired } from "@/lib/idleSession";
+
+describe("idle sign-out cookie", () => {
+  const start = Date.UTC(2026, 10, 9, 8, 0);
+  const minute = 60 * 1000;
+
+  it("signs out only after the limit has passed", () => {
+    const cookie = formatIdleCookie("sess-1", 30, start);
+    expect(isIdleExpired(cookie, "sess-1", start + 29 * minute)).toBe(false);
+    expect(isIdleExpired(cookie, "sess-1", start + 31 * minute)).toBe(true);
+  });
+
+  it("never throws out a new login that still carries an old cookie", () => {
+    const old = formatIdleCookie("sess-old", 30, start);
+    expect(isIdleExpired(old, "sess-new", start + 600 * minute)).toBe(false);
+  });
+
+  it("ignores a missing or broken cookie and caps a tampered limit at 8 hours", () => {
+    expect(isIdleExpired(undefined, "sess-1")).toBe(false);
+    expect(isIdleExpired("garbage", "sess-1")).toBe(false);
+    const tampered = formatIdleCookie("sess-1", 999999, start);
+    expect(isIdleExpired(tampered, "sess-1", start + 481 * minute)).toBe(true);
+  });
+});
 
 describe("password rules", () => {
   it("lists exactly what a password still misses", () => {

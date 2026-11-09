@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { IDLE_COOKIE, isIdleExpired } from "@/lib/idleSession";
 
 // Pages a signed-out visitor may open. API routes answer with their own 401 instead of a redirect.
 const PUBLIC_PATHS = ["/giris", "/sifre-yenile", "/auth", "/api"];
@@ -40,6 +41,19 @@ export async function proxy(request) {
     const redirect = NextResponse.redirect(new URL("/giris", request.url));
     // Keep any cookie changes (e.g. a cleared expired session) on the redirect response too.
     response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    return redirect;
+  }
+
+  // Inactivity limit (Ayarlar > Güvenlik). The page's own timer only runs while a tab is open; this catches
+  // the case where the browser was closed and opened again later. Only this device's session ends.
+  if (
+    !isPublic(request.nextUrl.pathname) &&
+    isIdleExpired(request.cookies.get(IDLE_COOKIE)?.value, data?.claims?.session_id)
+  ) {
+    await supabase.auth.signOut({ scope: "local" });
+    const redirect = NextResponse.redirect(new URL("/giris", request.url));
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    redirect.cookies.delete(IDLE_COOKIE);
     return redirect;
   }
 

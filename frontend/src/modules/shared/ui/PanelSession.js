@@ -4,15 +4,18 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { setPanelSession } from "./panelSessionStore";
+import { IDLE_COOKIE, formatIdleCookie } from "@/lib/idleSession";
 
 const ACTIVITY_EVENTS = ["pointerdown", "keydown", "wheel", "touchstart"];
 const SHARED_KEY = "panel-last-activity";
 const CHECK_EVERY_MS = 30 * 1000;
+const COOKIE_EVERY_MS = 30 * 1000;
+const COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // seconds; long enough to outlive any session
 
 // Renders nothing. Hands the user's permissions to the menu and signs out after `idleLogoutMinutes`
 // without activity (shared computer at the clinic). The last activity time is shared between tabs through
 // localStorage, so working in one tab keeps the others signed in too.
-export default function PanelSession({ canViewAccounting, isAdmin, idleLogoutMinutes }) {
+export default function PanelSession({ sessionId, canViewAccounting, isAdmin, idleLogoutMinutes }) {
   const router = useRouter();
 
   useEffect(() => {
@@ -22,9 +25,20 @@ export default function PanelSession({ canViewAccounting, isAdmin, idleLogoutMin
   useEffect(() => {
     const limit = idleLogoutMinutes * 60 * 1000;
     let last = Date.now();
+    let cookieWrittenAt = 0;
+
+    // Tells the server (proxy.js) when this session was last used, so a browser that is closed and opened
+    // again after the limit lands on the login page. Written at most every 30 seconds.
+    const writeCookie = () => {
+      if (!sessionId || last - cookieWrittenAt < COOKIE_EVERY_MS) return;
+      cookieWrittenAt = last;
+      const secure = window.location.protocol === "https:" ? "; secure" : "";
+      document.cookie = `${IDLE_COOKIE}=${formatIdleCookie(sessionId, idleLogoutMinutes, last)}; path=/; max-age=${COOKIE_MAX_AGE}; samesite=lax${secure}`;
+    };
 
     const remember = () => {
       last = Date.now();
+      writeCookie();
       try {
         localStorage.setItem(SHARED_KEY, String(last));
       } catch {
@@ -60,7 +74,7 @@ export default function PanelSession({ canViewAccounting, isAdmin, idleLogoutMin
       document.removeEventListener("visibilitychange", onVisible);
       clearInterval(timer);
     };
-  }, [idleLogoutMinutes, router]);
+  }, [idleLogoutMinutes, router, sessionId]);
 
   return null;
 }

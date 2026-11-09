@@ -81,6 +81,7 @@ export const getStaffProfile = cache(async () => {
 
   return {
     userId: claims.sub,
+    sessionId: claims.session_id,
     fullName: data.full_name,
     role: data.role,
     isAdmin: data.role === "admin",
