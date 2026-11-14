@@ -5,10 +5,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ScanInput from "@/modules/shared/ui/ScanInput";
 import Tabs from "@/modules/shared/ui/Tabs";
 import { scanToSearchText } from "../stockRules";
+import StockEntryButton from "./StockEntryButton";
 
-// Search box and view switch. A scanner (or Enter) writes the search into ?ara=, so the server does the
-// lookup and the result survives a refresh. Add / remove / price buttons join this bar in later PRs.
-export default function StockToolbar({ searchText, clearHref }) {
+// Search box, "Stok ekle" and the view switch. A scanner (or Enter) writes the search into ?ara=, so the
+// server does the lookup and the result survives a refresh. Remove / price buttons join this bar in later PRs.
+export default function StockToolbar({ searchText, clearHref, entryOptions }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -33,15 +34,18 @@ export default function StockToolbar({ searchText, clearHref }) {
           </Link>
         )}
       </div>
-      <Tabs
-        param="gorunum"
-        variant="chips"
-        label="Görünüm"
-        items={[
-          { value: "tablo", label: "Tablo" },
-          { value: "kart", label: "Kart" },
-        ]}
-      />
+      <div className="stock-actions">
+        <StockEntryButton options={entryOptions} />
+        <Tabs
+          param="gorunum"
+          variant="chips"
+          label="Görünüm"
+          items={[
+            { value: "tablo", label: "Tablo" },
+            { value: "kart", label: "Kart" },
+          ]}
+        />
+      </div>
     </div>
   );
 }
