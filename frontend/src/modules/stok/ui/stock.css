@@ -1,0 +1,110 @@
+/* Stok page. Colours come from the --ui-* tokens in shared/ui/ui.css; breakpoints follow panel-shell.css
+   (≤600 px phone, 601–1279 tablet, ≥1280 desktop). */
+
+.stock-page { display: grid; gap: 18px; min-width: 0; }
+
+.stock-head h1 { margin: 0 0 4px; color: var(--ui-ink); font-size: clamp(24px, 2.4vw, 30px); letter-spacing: -.02em; }
+.stock-head p { margin: 0; color: var(--ui-muted); }
+
+.stock-muted { color: var(--ui-muted); font-size: 13px; }
+.stock-code { font-variant-numeric: tabular-nums; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+
+/* ---------- Toolbar ---------- */
+.stock-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.stock-search { display: flex; flex: 1 1 360px; align-items: flex-end; gap: 8px; min-width: 0; max-width: 640px; }
+.stock-search > .ui-field { flex: 1 1 auto; }
+.stock-clear { min-height: 42px; }
+.stock-search-note { margin: 0; color: var(--ui-muted); }
+.stock-search-note strong { color: var(--ui-ink); overflow-wrap: anywhere; }
+
+.stock-filters { display: grid; gap: 10px; }
+
+/* ---------- Alerts ---------- */
+.stock-alerts {
+  border: 1px solid var(--ui-cream-line); border-radius: 14px; background: var(--ui-cream);
+}
+.stock-alerts summary { padding: 12px 16px; color: var(--ui-ink); font-weight: 700; cursor: pointer; }
+.stock-alerts ul { display: grid; gap: 2px; margin: 0; padding: 0 8px 10px; list-style: none; }
+.stock-alerts li {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  padding: 8px; border-radius: 10px; background: #fff;
+}
+.stock-alerts li a { flex: 1 1 220px; color: var(--ui-blue); font-weight: 600; text-decoration: none; }
+.stock-alerts li a:hover { text-decoration: underline; }
+.stock-alert-count { color: var(--ui-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+/* ---------- Brand sections ---------- */
+.stock-brands { display: grid; gap: 22px; }
+.stock-brand { display: grid; gap: 10px; min-width: 0; }
+.stock-brand h2 { margin: 0; color: var(--ui-ink); font-size: 17px; }
+
+/* ---------- Model table ---------- */
+.stock-table-wrap { overflow-x: auto; border: 1px solid var(--ui-line); border-radius: 14px; background: #fff; }
+.stock-models { width: 100%; border-collapse: collapse; font-size: 14px; }
+.stock-models > thead > tr > th {
+  padding: 11px 14px; background: var(--ui-soft); color: var(--ui-muted);
+  font-size: 12px; font-weight: 700; letter-spacing: .04em; text-align: left; text-transform: uppercase; white-space: nowrap;
+}
+.stock-models > tbody > tr > td { padding: 10px 14px; border-top: 1px solid var(--ui-line); vertical-align: middle; }
+.stock-models .ui-end { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stock-models > tbody > tr.open > td { background: var(--ui-soft); }
+.stock-brand-name { display: block; }
+.stock-cell { display: grid; gap: 2px; }
+.stock-model-name { display: block; color: var(--ui-ink); }
+.stock-col-photo { width: 64px; }
+.stock-col-action { text-align: right; white-space: nowrap; }
+.stock-models > tbody > tr.stock-units-row > td { padding: 12px 14px 16px; background: var(--ui-soft); }
+
+.stock-toggle { color: var(--ui-blue); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.stock-toggle:hover { text-decoration: underline; }
+
+.stock-photo { display: block; flex: none; border-radius: 10px; background: var(--ui-soft); object-fit: cover; }
+.stock-photo-empty {
+  display: grid; place-items: center; border: 1px solid var(--ui-line);
+  color: var(--ui-muted); font-weight: 700; text-transform: uppercase;
+}
+
+.stock-units { min-width: 0; }
+
+/* ---------- Card view ---------- */
+.stock-cards {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 12px;
+  margin: 0; padding: 0; list-style: none;
+}
+.stock-card {
+  display: grid; gap: 10px; padding: 12px;
+  border: 1px solid var(--ui-line); border-radius: 14px; background: #fff;
+}
+.stock-card.open { border-color: var(--ui-blue); }
+.stock-card .stock-photo { width: 100%; height: auto; aspect-ratio: 4 / 3; }
+.stock-card-body { display: grid; justify-items: start; gap: 4px; }
+.stock-card-body strong { color: var(--ui-ink); }
+.stock-price { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ---------- Phones: model rows become cards (the unit table inside uses DataTable's own card layout) ---------- */
+@media (max-width: 600px) {
+  .stock-search { flex-basis: 100%; }
+  .stock-toolbar { align-items: stretch; }
+
+  .stock-table-wrap { border: 0; background: transparent; }
+  .stock-models > thead { display: none; }
+  .stock-models, .stock-models > tbody, .stock-models > tbody > tr, .stock-models > tbody > tr > td { display: block; width: 100%; }
+  .stock-models > tbody > tr {
+    position: relative; margin-bottom: 10px; padding: 8px 0;
+    border: 1px solid var(--ui-line); border-radius: 14px; background: #fff;
+  }
+  .stock-models > tbody > tr > td {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    padding: 6px 14px; border: 0; text-align: right;
+  }
+  .stock-models > tbody > tr > td[data-label]::before {
+    content: attr(data-label); color: var(--ui-muted); font-size: 12px; font-weight: 700; text-align: left;
+  }
+  .stock-cell { justify-items: end; }
+  .stock-models > tbody > tr > td:nth-child(2) { display: block; padding-right: 72px; text-align: left; }
+  .stock-models > tbody > tr > td:nth-child(2)::before { content: none; }
+  .stock-col-photo { position: absolute; top: 10px; right: 0; width: auto; }
+  .stock-col-action { justify-content: flex-end; }
+  .stock-models > tbody > tr.stock-units-row { margin-top: -6px; padding: 0; border: 0; background: transparent; }
+  .stock-models > tbody > tr.stock-units-row > td { display: block; padding: 0; background: transparent; }
+}
