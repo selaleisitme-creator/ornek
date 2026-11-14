@@ -162,6 +162,14 @@ describe("database errors", () => {
     expect(toUserMessage(duplicate("brands_name_key"))).toMatch(/marka zaten/);
   });
 
+  it("explains the stock removal errors", () => {
+    expect(toUserMessage({ message: "Some units are not in stock; nothing was removed" })).toMatch(/hiçbiri silinmedi/);
+    expect(toUserMessage({ message: "There are no units to remove" })).toMatch(/birimleri seçin/);
+    expect(toUserMessage({ message: "Unknown removal reason stolen" })).toMatch(/nedenini/);
+    expect(toUserMessage({ message: 'new row violates check constraint "products_pack_needs_size"' })).toMatch(/pil adedini/);
+    expect(toUserMessage({ message: "Only an admin can correct the purchase price of a stock unit" })).toMatch(/yalnızca yönetici/);
+  });
+
   it("never shows an unknown database message", () => {
     expect(toUserMessage({ message: "relation public.secret_table does not exist" })).toBe("İşlem tamamlanamadı. Lütfen tekrar deneyin.");
   });

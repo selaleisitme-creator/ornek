@@ -3,6 +3,11 @@
 // message; the original is only logged on the server, never shown, so table names do not leak.
 
 const KNOWN = [
+  // remove_stock_units (010); listed before the general "not in stock" sentence below.
+  [/not in stock; nothing was removed/i, "Seçilen birimlerden bazıları artık stokta değil; hiçbiri silinmedi. Sayfayı yenileyin."],
+  [/no units to remove/i, "Silinecek birimleri seçin."],
+  [/Unknown removal reason/i, "Silme nedenini seçin."],
+  [/products_pack_needs_size/i, "Paket içindeki pil adedini girin."],
   [/is not in stock|must be in stock/i, "Bu cihaz stokta değil. Satılmış, serviste ya da çıkarılmış olabilir."],
   [/not the device currently in use/i, "Bu cihaz hastanın şu an kullandığı cihaz değil."],
   [/cannot be replaced/i, "Bu cihaz iade edildiği için değiştirilemez."],

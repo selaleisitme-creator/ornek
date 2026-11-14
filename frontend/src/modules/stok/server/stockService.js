@@ -10,6 +10,7 @@ import {
   listProductDetails,
   listSummaryRows,
 } from "./stockRepository";
+import { getProductForEdit, listProductPhotos } from "./catalogRepository";
 import {
   collapseUnits,
   countEarSides,
@@ -22,7 +23,7 @@ import {
 } from "../stockRules";
 
 // Shapes the stock page: models of the chosen group (or the search results) grouped by brand, the brand
-// chips, the alerts box and the units of the one open model. Read-only; writes arrive in later PRs.
+// chips, the alerts box and, for the one open model, its units and what its edit windows need. Read-only.
 
 // product-photos is a public bucket, so the browser can load the file straight from Storage.
 function photoUrl(path) {
@@ -135,12 +136,45 @@ function toUnit(row) {
   };
 }
 
+function toNumber(value) {
+  return value === null || value === undefined ? null : Number(value);
+}
+
+// The "Model düzenle" fields and every photo of the open model. Loaded for that one model only, so the
+// list itself stays as light as before.
+async function loadOpenDetails(productId) {
+  const [product, photos] = await Promise.all([getProductForEdit(productId), listProductPhotos(productId)]);
+  if (!product) return null;
+  return {
+    productId: product.id,
+    category: product.category,
+    unit: product.unit,
+    name: product.name,
+    type: product.type ?? "",
+    gtin: product.gtin ?? "",
+    packageBarcode: product.package_barcode ?? "",
+    manufacturerRef: product.manufacturer_ref ?? "",
+    salePrice: toNumber(product.sale_price),
+    warrantyMonths: product.warranty_months ?? "",
+    minStock: product.min_stock ?? "",
+    serialPolicy: product.serial_policy,
+    packSize: product.pack_size ?? "",
+    packsPerBox: product.packs_per_box ?? "",
+    boxesPerCarton: product.boxes_per_carton ?? "",
+    photos: photos.map((photo) => ({ id: photo.id, url: photoUrl(photo.storage_path) })),
+  };
+}
+
 export async function getStockView(query) {
   const [alertRows, listing] = await Promise.all([listAlertRows(), query.ara ? loadSearch(query) : loadGroup(query)]);
 
   const openProductId = query.ac ?? listing.matchedProductId;
-  const isShown = listing.models.some((model) => model.productId === openProductId);
-  const units = isShown ? collapseUnits((await listInStockUnits(openProductId)).map(toUnit)) : [];
+  const openModel = listing.models.find((model) => model.productId === openProductId) ?? null;
+  const isShown = Boolean(openModel);
+  const [unitRows, openDetails] = isShown
+    ? await Promise.all([listInStockUnits(openProductId), loadOpenDetails(openProductId)])
+    : [[], null];
+  const units = collapseUnits(unitRows.map(toUnit));
 
   return {
     group: listing.group,
@@ -148,6 +182,8 @@ export async function getStockView(query) {
     brandGroups: groupByBrand(listing.models),
     modelCount: listing.models.length,
     openProductId: isShown ? openProductId : null,
+    openModel,
+    openDetails,
     openUnits: units,
     alerts: summarizeAlerts(
       alertRows.map((row) => ({

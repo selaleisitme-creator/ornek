@@ -30,6 +30,17 @@ import {
   newModelError,
   entryError,
   buildStockEntryArgs,
+  modelFieldsError,
+  buildModelUpdate,
+  serialRuleWarning,
+  buildUnitUpdate,
+  purchasePriceError,
+  photoFileError,
+  MAX_PHOTO_BYTES,
+  buildRemovalArgs,
+  cleanUnitIds,
+  pickedUnitIds,
+  rowBySerial,
 } from "@/modules/stok/stockRules";
 
 describe("stock entry rules", () => {
@@ -253,6 +264,12 @@ describe("unit rows", () => {
     expect(rows.map((row) => row.count)).toEqual([1, 1]);
   });
 
+  it("keeps the ids of every merged unit, and a serial row its own id", () => {
+    const rows = collapseUnits([unit(1), unit(2, { serialNo: "S2" }), unit(3), unit(4, { earSide: "left" }), unit(5)]);
+    expect(rows.map((row) => row.unitIds)).toEqual([[1, 3, 5], [2], [4]]);
+    expect(rows[0].count).toBe(rows[0].unitIds.length);
+  });
+
   it("treats opening stock (no receipt) as one source", () => {
     const rows = collapseUnits([unit(1, { receiptId: null }), unit(2, { receiptId: null })]);
     expect(rows).toHaveLength(1);
@@ -335,5 +352,161 @@ describe("search", () => {
     expect(matchesAllWords(text, searchWords("BERNAFON"))).toBe(true);
     expect(matchesAllWords(text, searchWords("bernafon viron"))).toBe(false);
     expect(matchesAllWords("Coselgi İşitme Pil", searchWords("IŞITME"))).toBe(true);
+  });
+});
+
+describe("model editing", () => {
+  const model = {
+    name: " Viron  9 ",
+    type: "",
+    salePrice: 45000.456,
+    gtin: "07612345678906",
+    packageBarcode: "",
+    manufacturerRef: "REF-1",
+    warrantyMonths: "24",
+    minStock: "",
+    serialPolicy: "required",
+    packSize: "",
+    packsPerBox: "",
+    boxesPerCarton: "",
+  };
+
+  it("shares the new-model checks except the brand", () => {
+    expect(modelFieldsError({ ...model, category: "device" })).toBeNull();
+    expect(modelFieldsError({ ...model, name: " ", category: "device" })).toMatch(/Model adı/);
+    expect(modelFieldsError({ ...model, salePrice: 0, category: "device" })).toMatch(/Satış fiyatı/);
+    expect(modelFieldsError({ ...model, gtin: "123", category: "device" })).toMatch(/8 ile 14/);
+    expect(modelFieldsError({ ...model, minStock: "-1", category: "device" })).toMatch(/Alt stok/);
+    expect(modelFieldsError({ ...model, category: "battery" })).toMatch(/pil adedini/);
+    expect(modelFieldsError()).toMatch(/Model adı/);
+  });
+
+  it("builds only the columns this screen may change", () => {
+    const { values } = buildModelUpdate(model, { category: "device" });
+    expect(values).toEqual({
+      name: "Viron 9",
+      type: null,
+      gtin: "7612345678906",
+      package_barcode: null,
+      manufacturer_ref: "REF-1",
+      sale_price: 45000.46,
+      warranty_months: 24,
+      min_stock: 0,
+      serial_policy: "required",
+    });
+    for (const column of ["category", "brand_id", "unit", "purchase_price", "active"]) expect(values).not.toHaveProperty(column);
+  });
+
+  it("writes the packaging only for batteries", () => {
+    const { values } = buildModelUpdate({ ...model, packSize: "6", packsPerBox: "10", boxesPerCarton: "" }, { category: "battery" });
+    expect(values).toMatchObject({ pack_size: 6, packs_per_box: 10, boxes_per_carton: null });
+    expect(buildModelUpdate({ ...model, salePrice: null }, { category: "device" }).error).toMatch(/Satış fiyatı/);
+  });
+
+  it("warns only when the rule becomes Zorunlu and shelf units lack a serial", () => {
+    expect(serialRuleWarning({ from: "optional", to: "required", serialLessCount: 3 })).toMatch(/3 birim/);
+    expect(serialRuleWarning({ from: "required", to: "required", serialLessCount: 3 })).toBeNull();
+    expect(serialRuleWarning({ from: "none", to: "required", serialLessCount: 0 })).toBeNull();
+    expect(serialRuleWarning({ from: "none", to: "optional", serialLessCount: 5 })).toBeNull();
+  });
+});
+
+describe("unit editing", () => {
+  const options = { category: "device", serialPolicy: "required", collapsed: false, today: "2026-11-14" };
+
+  it("writes serial, side, date and WSA code for one unit", () => {
+    const { values } = buildUnitUpdate(
+      { serialNo: " SN1 ", earSide: "left", productionDate: "2026-01-02", wsaCode: " W-1 " },
+      options
+    );
+    expect(values).toEqual({ ear_side: "left", production_date: "2026-01-02", serial_no: "SN1", wsa_code: "W-1" });
+  });
+
+  it("follows the model's serial rule", () => {
+    expect(buildUnitUpdate({ serialNo: "" }, options).error).toMatch(/zorunlu/);
+    expect(buildUnitUpdate({ serialNo: "X" }, { ...options, serialPolicy: "none" }).error).toMatch(/seri numarasız/);
+    expect(buildUnitUpdate({ serialNo: "" }, { ...options, serialPolicy: "optional" }).values.serial_no).toBeNull();
+    expect(buildUnitUpdate({ serialNo: "x".repeat(61) }, options).error).toMatch(/60 karakter/);
+  });
+
+  it("refuses a future or broken production date and an unknown side", () => {
+    expect(buildUnitUpdate({ serialNo: "A", productionDate: "2026-11-15" }, options).error).toMatch(/Üretim tarihi/);
+    expect(buildUnitUpdate({ serialNo: "A", productionDate: "14.11.2026" }, options).error).toMatch(/Üretim tarihi/);
+    expect(buildUnitUpdate({ serialNo: "A", earSide: "up" }, options).error).toMatch(/Tarafı/);
+  });
+
+  it("leaves the side out for groups without sides", () => {
+    const { values } = buildUnitUpdate({ serialNo: "A", earSide: "left" }, { ...options, category: "charger" });
+    expect(values).not.toHaveProperty("ear_side");
+  });
+
+  it("changes only side and date on a collapsed row, whatever the serial rule says", () => {
+    const { values } = buildUnitUpdate(
+      { serialNo: "IGNORED", earSide: "right", productionDate: "", wsaCode: "W" },
+      { ...options, category: "receiver", collapsed: true }
+    );
+    expect(values).toEqual({ ear_side: "right", production_date: null });
+  });
+
+  it("checks a corrected purchase price", () => {
+    expect(purchasePriceError(0)).toBeNull();
+    expect(purchasePriceError(1234.56)).toBeNull();
+    expect(purchasePriceError(-1)).toMatch(/eksi/);
+    expect(purchasePriceError(null)).toMatch(/biçiminde/);
+    expect(purchasePriceError("100")).toMatch(/biçiminde/);
+    expect(purchasePriceError(1e10)).toMatch(/çok büyük/);
+  });
+});
+
+describe("photos", () => {
+  it("accepts WebP, JPEG and PNG up to the limit", () => {
+    expect(photoFileError({ type: "image/webp", size: 200_000 })).toBeNull();
+    expect(photoFileError({ type: "image/png", size: MAX_PHOTO_BYTES })).toBeNull();
+    expect(photoFileError({ type: "image/svg+xml", size: 100 })).toMatch(/JPEG, PNG ya da WebP/);
+    expect(photoFileError({ type: "image/jpeg", size: MAX_PHOTO_BYTES + 1 })).toMatch(/1 MB/);
+    expect(photoFileError({ type: "image/jpeg", size: 0 })).toMatch(/boş/);
+    expect(photoFileError(null)).toMatch(/seçin/);
+    expect(photoFileError("not a file")).toMatch(/seçin/);
+  });
+});
+
+describe("stock removal", () => {
+  it("cleans the unit id list or refuses it whole", () => {
+    expect(cleanUnitIds([3, "4", 3])).toEqual([3, 4]);
+    expect(cleanUnitIds([])).toBeNull();
+    expect(cleanUnitIds([1, 0])).toBeNull();
+    expect(cleanUnitIds([1, "x"])).toBeNull();
+    expect(cleanUnitIds("1")).toBeNull();
+    expect(cleanUnitIds(Array.from({ length: 501 }, (_, i) => i + 1))).toBeNull();
+    expect(cleanUnitIds(Array.from({ length: 500 }, (_, i) => i + 1))).toHaveLength(500);
+  });
+
+  it("builds the remove_stock_units arguments", () => {
+    expect(buildRemovalArgs({ unitIds: [5, 6], reason: "damaged_lost", note: "  " })).toEqual({
+      args: { unitIds: [5, 6], reason: "damaged_lost", note: null },
+    });
+    expect(buildRemovalArgs({ unitIds: [5], reason: "entry_error", note: " typo " }).args.note).toBe("typo");
+  });
+
+  it("needs units, a known reason, a short note, and a note for Diğer", () => {
+    expect(buildRemovalArgs({ unitIds: [], reason: "other", note: "x" }).error).toMatch(/birimleri seçin/);
+    expect(buildRemovalArgs({ unitIds: [1], reason: "stolen" }).error).toMatch(/nedenini/);
+    expect(buildRemovalArgs({ unitIds: [1], reason: "other", note: " " }).error).toMatch(/Diğer/);
+    expect(buildRemovalArgs({ unitIds: [1], reason: "other", note: "x".repeat(501) }).error).toMatch(/500 karakter/);
+    expect(buildRemovalArgs({ unitIds: [1], reason: "other", note: "Kırıldı" }).args.reason).toBe("other");
+  });
+
+  it("picks the first n units of a collapsed row and one serial row", () => {
+    const rows = [
+      { id: 1, serialNo: null, count: 3, unitIds: [1, 2, 3] },
+      { id: 7, serialNo: "S7", count: 1, unitIds: [7] },
+      { id: 8, serialNo: "S8", count: 1, unitIds: [8] },
+    ];
+    expect(pickedUnitIds(rows, { 1: 2, 8: 1 })).toEqual([1, 2, 8]);
+    expect(pickedUnitIds(rows, { 1: 9, 7: -1 })).toEqual([1, 2, 3]);
+    expect(pickedUnitIds(rows, {})).toEqual([]);
+    expect(rowBySerial(rows, " S7 ")?.id).toBe(7);
+    expect(rowBySerial(rows, "S9")).toBeNull();
+    expect(rowBySerial(rows, "")).toBeNull();
   });
 });

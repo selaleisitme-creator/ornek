@@ -89,3 +89,98 @@ export async function insertSupplier(name) {
   if (error) throw error;
   return data;
 }
+
+// ---------------------------------------------------------------------------
+// Model and unit editing, photos
+// ---------------------------------------------------------------------------
+
+const EDIT_COLUMNS =
+  "id, category, unit, name, type, gtin, package_barcode, manufacturer_ref, sale_price, warranty_months, min_stock, serial_policy, pack_size, packs_per_box, boxes_per_carton, active";
+
+export async function getProductForEdit(id) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("products").select(EDIT_COLUMNS).eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+// Returns the updated row's id, or null when RLS or the filter matched nothing.
+export async function updateProduct(id, values) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("products").update(values).eq("id", id).select("id").maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function countInStockUnits(productId) {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("stock_units")
+    .select("id", { count: "exact", head: true })
+    .eq("product_id", productId)
+    .eq("status", "in_stock");
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function listProductPhotos(productId) {
+  const supabase = await createClient();
+  return check(
+    await supabase.from("product_photos").select("id, storage_path").eq("product_id", productId).order("id")
+  );
+}
+
+export async function getPhoto(id) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("product_photos").select("id, product_id, storage_path").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function insertPhoto(productId, storagePath) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("product_photos")
+    .insert({ product_id: productId, storage_path: storagePath })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deletePhoto(id) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("product_photos").delete().eq("id", id);
+  if (error) throw error;
+}
+
+const PHOTO_BUCKET = "product-photos";
+
+export async function uploadPhotoFile(path, file) {
+  const supabase = await createClient();
+  const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+}
+
+export async function removePhotoFile(path) {
+  const supabase = await createClient();
+  const { error } = await supabase.storage.from(PHOTO_BUCKET).remove([path]);
+  if (error) throw error;
+}
+
+// The units with their model's group and serial rule, so the rules come from the database, not the browser.
+export async function listUnitsForEdit(ids) {
+  const supabase = await createClient();
+  return check(
+    await supabase.from("stock_units").select("id, product_id, status, products(category, serial_policy)").in("id", ids)
+  );
+}
+
+// Only units still on the shelf change (one sold a moment ago is skipped); returns the ids that were updated.
+export async function updateInStockUnits(ids, values) {
+  const supabase = await createClient();
+  const rows = check(
+    await supabase.from("stock_units").update(values).in("id", ids).eq("status", "in_stock").select("id")
+  );
+  return rows.map((row) => row.id);
+}

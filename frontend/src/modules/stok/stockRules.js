@@ -99,20 +99,22 @@ export function summarizeAlerts(rows) {
 
 // Units without a serial number cannot be told apart, so those from the same receipt with the same side and
 // price become one "n adet" row. Serial-numbered units always keep their own row.
+// Every row keeps the ids of all its units (unitIds): editing or removing "3 of 8 adet" needs real unit ids.
 export function collapseUnits(units) {
   const rows = [];
   const merged = new Map();
   for (const unit of units) {
     if (unit.serialNo) {
-      rows.push({ ...unit, count: 1 });
+      rows.push({ ...unit, count: 1, unitIds: [unit.id] });
       continue;
     }
     const key = [unit.receiptId ?? "opening", unit.earSide ?? "", unit.purchasePrice ?? ""].join("|");
     const existing = merged.get(key);
     if (existing) {
       existing.count += 1;
+      existing.unitIds.push(unit.id);
     } else {
-      const row = { ...unit, count: 1 };
+      const row = { ...unit, count: 1, unitIds: [unit.id] };
       merged.set(key, row);
       rows.push(row);
     }
@@ -318,6 +320,12 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 // A new model's fields → the first problem as a Turkish sentence, or null when it can be saved.
 export function newModelError(model) {
   if (!Number.isSafeInteger(Number(model?.brandId)) || !(Number(model?.brandId) > 0)) return "Marka seçin.";
+  return modelFieldsError(model);
+}
+
+// The model fields both "Stok ekle" and "Model düzenle" share (everything but the brand, which is fixed
+// once the model exists). model.category must be set: batteries need their pack size.
+export function modelFieldsError(model = {}) {
   const name = String(model.name ?? "").trim();
   if (!name) return "Model adı zorunlu.";
   if (name.length > 120) return "Model adı en fazla 120 karakter olabilir.";
@@ -475,4 +483,150 @@ export function buildStockEntryArgs(input, { existing = null, today }) {
   }
 
   return { args: { product, receipt, units } };
+}
+
+// ---------------------------------------------------------------------------
+// Editing a model, a unit, photos, and removing stock. The dialogs check these first for instant feedback;
+// the server checks them again before it writes, because Server Actions can be called without the dialogs.
+// ---------------------------------------------------------------------------
+
+// 1–max distinct positive ids, or null. Ids come from the browser, so anything odd refuses the whole list
+// instead of being dropped: removing "some" of what was ticked would be worse than removing nothing.
+export function cleanUnitIds(ids, max = MAX_ENTRY_UNITS) {
+  if (!Array.isArray(ids) || ids.length < 1) return null;
+  const numbers = ids.map(Number);
+  if (!numbers.every((id) => Number.isSafeInteger(id) && id > 0)) return null;
+  const unique = [...new Set(numbers)];
+  return unique.length <= max ? unique : null;
+}
+
+// "Model düzenle" input → the products columns this screen may change, or the first problem in Turkish.
+// Brand, group, unit and purchase price are left out on purpose: the group decides how the stock is counted,
+// and the model's purchase price is only the suggestion for the next entry (Faz 1 decision 4).
+//   category: the product's group read from the database, never from the browser.
+export function buildModelUpdate(input, { category }) {
+  const source = input ?? {};
+  const problem = modelFieldsError({ ...source, category });
+  if (problem) return { error: problem };
+
+  const battery = category === "battery";
+  const values = {
+    name: String(source.name).trim().replace(/\s+/g, " "),
+    type: text(source.type, 120),
+    gtin: cleanGtin(source.gtin).gtin,
+    package_barcode: text(source.packageBarcode, 60),
+    manufacturer_ref: text(source.manufacturerRef, 60),
+    sale_price: Math.round(Number(source.salePrice) * 100) / 100,
+    warranty_months: optionalWhole(source.warrantyMonths) ?? 0,
+    min_stock: optionalWhole(source.minStock) ?? 0,
+    serial_policy: source.serialPolicy,
+  };
+  if (battery) {
+    values.pack_size = optionalWhole(source.packSize);
+    values.packs_per_box = optionalWhole(source.packsPerBox);
+    values.boxes_per_carton = optionalWhole(source.boxesPerCarton);
+  }
+  return { values };
+}
+
+// Switching the rule to "Zorunlu" does not touch units already on the shelf (the database checks a serial
+// only when a unit is written), so the dialog warns how many would then need one before their next edit.
+export function serialRuleWarning({ from, to, serialLessCount }) {
+  if (to !== "required" || from === "required" || !(serialLessCount > 0)) return null;
+  return `Stokta seri numarası olmayan ${serialLessCount} birim var. Bu birimler düzenlenirken seri numarası istenecek.`;
+}
+
+// "Birim düzenle" input → the stock_units columns to write, or the first problem in Turkish.
+//   collapsed: true when the row stands for several serial-less units ("8 adet"); then only the side and the
+//              production date apply to all of them. Serial and WSA code belong to one unit only.
+//   today:     "YYYY-MM-DD" in Istanbul.
+export function buildUnitUpdate(input, { category, serialPolicy, collapsed, today }) {
+  const source = input ?? {};
+  const values = {};
+
+  if (hasEarSides(category)) {
+    const side = String(source.earSide ?? "");
+    if (side && !EAR_SIDES.has(side)) return { error: "Tarafı seçin." };
+    values.ear_side = side || null;
+  }
+
+  const date = String(source.productionDate ?? "").trim();
+  if (date && (!DATE_RE.test(date) || date > today)) {
+    return { error: "Üretim tarihi geçerli ve bugünden sonra olmayan bir tarih olmalı." };
+  }
+  values.production_date = date || null;
+
+  if (!collapsed) {
+    const serial = String(source.serialNo ?? "").trim();
+    if (serialPolicy === "required" && !serial) return { error: "Bu modelde seri numarası zorunlu." };
+    if (serialPolicy === "none" && serial) return { error: "Bu model seri numarasız takip ediliyor; seri numarası girmeyin." };
+    if (serial.length > 60) return { error: "Seri numarası en fazla 60 karakter olabilir." };
+    values.serial_no = serial || null;
+
+    const wsa = String(source.wsaCode ?? "").trim();
+    if (wsa.length > 60) return { error: "WSA kodu en fazla 60 karakter olabilir." };
+    values.wsa_code = wsa || null;
+  }
+  return { values };
+}
+
+// numeric(12, 2) in the database: up to 9.999.999.999,99.
+export function purchasePriceError(amount) {
+  if (typeof amount !== "number" || !Number.isFinite(amount)) return "Alış fiyatını 7.491,64 biçiminde yazın.";
+  if (amount < 0) return "Alış fiyatı eksi olamaz.";
+  if (amount >= 1e10) return "Alış fiyatı çok büyük.";
+  return null;
+}
+
+// Photos are shrunk to WebP in the browser first (resizeImage.js); the limit stays under the Server Action's
+// 1 MB request cap, which also has to carry the form fields around the file.
+export const PHOTO_TYPES = ["image/webp", "image/jpeg", "image/png"];
+export const MAX_PHOTO_BYTES = 1000 * 1000;
+
+export function photoFileError(file) {
+  if (!file || typeof file.size !== "number") return "Fotoğraf seçin.";
+  if (!PHOTO_TYPES.includes(file.type)) return "Yalnızca JPEG, PNG ya da WebP fotoğraf yüklenebilir.";
+  if (file.size === 0) return "Fotoğraf dosyası boş.";
+  if (file.size > MAX_PHOTO_BYTES) return "Fotoğraf 1 MB'tan büyük olamaz.";
+  return null;
+}
+
+// Same list as the stock_removals check in 010_stock_screen.sql.
+export const REMOVAL_REASONS = [
+  { value: "entry_error", label: "Hatalı giriş" },
+  { value: "damaged_lost", label: "Hasarlı / kayıp" },
+  { value: "returned_to_supplier", label: "Tedarikçiye iade" },
+  { value: "other", label: "Diğer" },
+];
+
+// "Stok sil" input → the remove_stock_units arguments, or the first problem in Turkish.
+export function buildRemovalArgs(input) {
+  const unitIds = cleanUnitIds(input?.unitIds, MAX_ENTRY_UNITS);
+  if (!unitIds) return { error: `Silinecek birimleri seçin (en fazla ${MAX_ENTRY_UNITS}).` };
+  const reason = String(input?.reason ?? "");
+  if (!REMOVAL_REASONS.some((option) => option.value === reason)) return { error: "Silme nedenini seçin." };
+  const note = String(input?.note ?? "").trim();
+  if (note.length > 500) return { error: "Not en fazla 500 karakter olabilir." };
+  // "Diğer" says nothing by itself; the note is the only record of why the unit left the shelf.
+  if (reason === "other" && !note) return { error: "\"Diğer\" seçildiğinde not yazın." };
+  return { args: { unitIds, reason, note: note || null } };
+}
+
+// The unit ids picked in "Stok sil": counts is { [rowId]: how many of that row }. A serial row counts 0 or 1,
+// a collapsed "8 adet" row 0–8; the units within a collapsed row are interchangeable, so the first n are taken.
+export function pickedUnitIds(rows, counts) {
+  const ids = [];
+  for (const row of rows ?? []) {
+    const wanted = Math.floor(Number(counts?.[row.id]) || 0);
+    const unitIds = row.unitIds ?? [];
+    ids.push(...unitIds.slice(0, Math.min(Math.max(wanted, 0), unitIds.length)));
+  }
+  return ids;
+}
+
+// The unit row whose serial number was scanned or typed (surrounding spaces ignored), or null.
+export function rowBySerial(rows, serial) {
+  const wanted = String(serial ?? "").trim();
+  if (!wanted) return null;
+  return (rows ?? []).find((row) => row.serialNo && row.serialNo.trim() === wanted) ?? null;
 }

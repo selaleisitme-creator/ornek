@@ -20,7 +20,8 @@ export function ModelPhoto({ model, size }) {
 }
 
 // Card view of one brand's models: photo, name, stock, price, status. The link opens the units below.
-export default function ProductCards({ models, openProductId, hrefFor }) {
+// editFor(model) gives the card's "Düzenle" button (a client island from the server list).
+export default function ProductCards({ models, openProductId, hrefFor, editFor }) {
   return (
     <ul className="stock-cards">
       {models.map((model) => {
@@ -35,9 +36,12 @@ export default function ProductCards({ models, openProductId, hrefFor }) {
               <span>{formatStock(model)}</span>
               <span className="stock-price">{formatMoney(model.salePrice)}</span>
               <StatusBadge tone={level.tone}>{level.label}</StatusBadge>
-              <Link className="stock-toggle" href={hrefFor(model)} scroll={false}>
-                {open ? "Kayıtları kapat" : "Kayıtları aç"}
-              </Link>
+              <span className="stock-row-actions">
+                {editFor?.(model)}
+                <Link className="stock-toggle" href={hrefFor(model)} scroll={false}>
+                  {open ? "Kayıtları kapat" : "Kayıtları aç"}
+                </Link>
+              </span>
             </div>
           </li>
         );

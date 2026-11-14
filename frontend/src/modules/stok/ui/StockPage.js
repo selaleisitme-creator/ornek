@@ -19,6 +19,14 @@ export default async function StockPage({ searchParams }) {
   const searching = Boolean(query.ara);
   // A scanned barcode that matched nothing becomes the new model's GTIN in the entry window.
   const searchedGtin = searching ? (searchTerms(query.ara).gtins[0] ?? null) : null;
+  // The toolbar's "Stok sil" works on the open model's units; with no model open it stays disabled.
+  const open = view.openModel;
+  const removal = open
+    ? {
+        model: { brandName: open.brandName, name: open.name, category: open.category, serialPolicy: open.serialPolicy },
+        units: view.openUnits,
+      }
+    : null;
 
   return (
     <section className="stock-page">
@@ -28,7 +36,12 @@ export default async function StockPage({ searchParams }) {
         <p>Raftaki cihazlar, aksesuarlar ve piller.</p>
       </header>
 
-      <StockToolbar searchText={query.ara} clearHref={stockHref(query, { ara: null, ac: null })} entryOptions={entryOptions} />
+      <StockToolbar
+        searchText={query.ara}
+        clearHref={stockHref(query, { ara: null, ac: null })}
+        entryOptions={entryOptions}
+        removal={removal}
+      />
 
       <StockAlerts alerts={view.alerts} />
 
@@ -75,6 +88,7 @@ export default async function StockPage({ searchParams }) {
           query={query}
           openProductId={view.openProductId}
           openUnits={view.openUnits}
+          openDetails={view.openDetails}
         />
       )}
     </section>

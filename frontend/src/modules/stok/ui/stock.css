@@ -173,3 +173,61 @@
   .stock-entry-row-no { grid-row: 1 / span 3; align-self: start; padding-top: 30px; }
   .stock-entry-models, .stock-entry-rows { max-height: none; }
 }
+
+/* ---------- Edit and remove (PR 4) ---------- */
+.stock-row-actions { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 14px; }
+.stock-link-button {
+  padding: 0; border: 0; background: none; color: var(--ui-blue);
+  font: 600 14px/1.3 inherit; cursor: pointer; white-space: nowrap;
+}
+.stock-link-button:hover { text-decoration: underline; }
+.stock-link-button:focus-visible { outline: 2px solid var(--ui-blue); outline-offset: 2px; border-radius: 4px; }
+
+.stock-units { display: grid; gap: 8px; }
+.stock-units-actions { display: flex; justify-content: flex-end; }
+
+.stock-photos { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--ui-line); }
+.stock-photos-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.stock-photos h3, .stock-danger-zone h3 { margin: 0; color: var(--ui-ink); font-size: 15px; }
+.stock-photo-list { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.stock-photo-list li { display: grid; justify-items: center; gap: 4px; }
+.stock-photo-list img {
+  display: block; width: 96px; height: 96px; border: 1px solid var(--ui-line); border-radius: 10px;
+  background: var(--ui-soft); object-fit: cover;
+}
+.stock-photo-remove {
+  min-height: 32px; padding: 4px 12px; border: 1px solid var(--ui-line); border-radius: 8px;
+  background: #fff; color: var(--ui-danger); font: 600 13px/1.2 inherit; cursor: pointer;
+}
+.stock-photo-remove:hover { background: var(--ui-soft); }
+
+.stock-danger-zone { display: grid; justify-items: start; gap: 8px; padding-top: 14px; border-top: 1px solid var(--ui-line); }
+.stock-danger-zone p { margin: 0; }
+
+.stock-remove-units { margin: 0; padding: 0; border: 0; min-width: 0; }
+.stock-remove-units legend { margin-bottom: 8px; padding: 0; }
+.stock-remove-units ul { display: grid; gap: 6px; max-height: 340px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.stock-remove-units li {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px;
+  padding: 10px 12px; border: 1px solid var(--ui-line); border-radius: 12px; background: #fff;
+}
+.stock-remove-units li.on { border-color: var(--ui-danger); background: #fdf3f2; }
+.stock-remove-units .stock-entry-check { flex: 1 1 240px; min-width: 0; }
+.stock-remove-units .stock-code { overflow-wrap: anywhere; }
+.stock-remove-count { flex: 0 0 110px; }
+.stock-remove-summary { flex: 1 1 auto; margin: 0; color: var(--ui-ink); font-weight: 700; }
+
+@media (max-width: 600px) {
+  .stock-units-actions { justify-content: stretch; }
+  .stock-units-actions .ui-button { width: 100%; }
+  .stock-remove-units ul { max-height: none; }
+  .stock-remove-count { flex-basis: 100%; }
+  .stock-remove-summary { flex-basis: 100%; }
+}
+
+/* The edit windows are rendered inside table cells (next to their buttons), and a <dialog> inherits text
+   styles from its parent even in the top layer. Reset what the cells set: right-aligned, nowrap, 14px. */
+.stock-page .ui-modal {
+  font-size: 15px; font-weight: 400; line-height: 1.5; text-align: left; text-transform: none;
+  letter-spacing: normal; white-space: normal;
+}
