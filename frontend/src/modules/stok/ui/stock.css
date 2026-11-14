@@ -225,6 +225,48 @@
   .stock-remove-summary { flex-basis: 100%; }
 }
 
+/* ---------- Bulk price update and undo strip (PR 5) ---------- */
+.stock-price-bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px;
+  padding: 10px 16px; border: 1px solid var(--ui-line); border-radius: 14px; background: var(--ui-soft);
+}
+.stock-price-bar-text { flex: 1 1 280px; margin: 0; color: var(--ui-ink); font-size: 14px; overflow-wrap: anywhere; }
+.stock-price-bar-error { flex: 1 1 100%; margin: 0; }
+
+.stock-price-pick-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.stock-price-models { display: grid; gap: 6px; max-height: 340px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.stock-price-models li {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px;
+  padding: 10px 12px; border: 1px solid var(--ui-line); border-radius: 12px; background: #fff;
+}
+.stock-price-models li.on { border-color: var(--ui-blue); background: var(--ui-cream); }
+.stock-price-models .stock-entry-check { flex: 1 1 240px; min-width: 0; }
+
+/* ---------- Servis tab ---------- */
+.stock-services { display: grid; gap: 20px; }
+.stock-services-title { margin: 0; color: var(--ui-ink); font-size: 18px; }
+.stock-service-group { display: grid; gap: 10px; min-width: 0; }
+.stock-service-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.stock-service-head h3 { margin: 0; color: var(--ui-ink); font-size: 16px; }
+.stock-service-list {
+  display: grid; margin: 0; padding: 0; list-style: none;
+  border: 1px solid var(--ui-line); border-radius: 14px; background: #fff; overflow: hidden;
+}
+.stock-service-list li {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px 18px;
+  padding: 12px 16px;
+}
+.stock-service-list li + li { border-top: 1px solid var(--ui-line); }
+.stock-service-name { display: grid; gap: 2px; min-width: 0; }
+.stock-service-name strong { color: var(--ui-ink); overflow-wrap: anywhere; }
+.stock-link-danger { color: var(--ui-danger); }
+
+@media (max-width: 600px) {
+  .stock-price-models { max-height: none; }
+  .stock-service-list li { grid-template-columns: minmax(0, 1fr) auto; }
+  .stock-service-list li .stock-row-actions { grid-column: 1 / -1; justify-content: flex-start; }
+}
+
 /* The edit windows are rendered inside table cells (next to their buttons), and a <dialog> inherits text
    styles from its parent even in the top layer. Reset what the cells set: right-aligned, nowrap, 14px. */
 .stock-page .ui-modal {

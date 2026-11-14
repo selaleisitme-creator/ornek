@@ -41,6 +41,14 @@ import {
   cleanUnitIds,
   pickedUnitIds,
   rowBySerial,
+  computeNewPrice,
+  previewPriceChange,
+  parsePriceValue,
+  priceChangeError,
+  buildBulkPriceArgs,
+  priceBatchLabel,
+  buildServiceItem,
+  serviceCategoryLabel,
 } from "@/modules/stok/stockRules";
 
 describe("stock entry rules", () => {
@@ -286,8 +294,9 @@ describe("unit rows", () => {
 
 describe("address bar", () => {
   it("reads options and ignores anything unexpected", () => {
-    expect(readStockQuery({})).toEqual({ grup: "cihaz", marka: null, ara: null, gorunum: "tablo", ac: null });
+    expect(readStockQuery({})).toEqual({ sekme: "stok", grup: "cihaz", marka: null, ara: null, gorunum: "tablo", ac: null });
     expect(readStockQuery({ grup: "pil", marka: "3", ara: "  Viron ", gorunum: "kart", ac: "17" })).toEqual({
+      sekme: "stok",
       grup: "pil",
       marka: 3,
       ara: "Viron",
@@ -310,6 +319,109 @@ describe("address bar", () => {
     expect(stockHref(query, { ara: null, grup: "cihaz" })).toBe("/stok");
     expect(stockHref({}, { grup: "pil", ac: 9 })).toBe("/stok?grup=pil&ac=9");
     expect(stockHref({}, { ara: "(01)123(21)A B" })).toBe("/stok?ara=%2801%29123%2821%29A+B");
+  });
+
+  it("reads and writes the section", () => {
+    expect(readStockQuery({ sekme: "servis" }).sekme).toBe("servis");
+    expect(readStockQuery({ sekme: "satilan" }).sekme).toBe("stok");
+    expect(stockHref({}, { sekme: "servis" })).toBe("/stok?sekme=servis");
+    expect(stockHref(readStockQuery({ sekme: "stok", grup: "pil" }))).toBe("/stok?grup=pil");
+  });
+});
+
+describe("bulk price rules", () => {
+  it("computes like update_prices_bulk (exact decimals, halves away from zero)", () => {
+    expect(computeNewPrice(18500, { mode: "percent", value: 7.5, roundTo: 10 })).toBe(19890); // 19887.5 → 19890
+    expect(computeNewPrice(22500, { mode: "percent", value: -12, roundTo: 100 })).toBe(19800);
+    expect(computeNewPrice(160, { mode: "amount", value: 2.5, roundTo: 0 })).toBe(162.5);
+    expect(computeNewPrice(199.99, { mode: "percent", value: 10, roundTo: 1 })).toBe(220); // 219.989 → 220
+    expect(computeNewPrice(18500, { mode: "percent", value: 7.5, roundTo: 0 })).toBe(19887.5);
+    // Floats would give 15.07 here (15.075 is 15.07499… in binary); Postgres numeric gives 15.08.
+    expect(computeNewPrice(10.05, { mode: "percent", value: 50, roundTo: 0 })).toBe(15.08);
+    expect(computeNewPrice(100, { mode: "amount", value: 5, roundTo: 10 })).toBe(110); // 10.5 → 11
+    expect(computeNewPrice("1250.00", { mode: "amount", value: -250.5, roundTo: 0 })).toBe(999.5);
+  });
+
+  it("sets a new price to the kuruş whatever the rounding", () => {
+    expect(computeNewPrice(123, { mode: "set", value: 999.99, roundTo: 10 })).toBe(999.99);
+    expect(computeNewPrice(123, { mode: "set", value: 1.234 })).toBeNull();
+    expect(computeNewPrice(123, { mode: "percent", value: 5, roundTo: 5 })).toBeNull();
+  });
+
+  it("previews each model with its status and counts", () => {
+    const models = [
+      { id: 1, brandName: "Bernafon", name: "Alpha 5", salePrice: "18500.00" },
+      { id: 2, brandName: "Bernafon", name: "Alpha 3", salePrice: 40 },
+      { id: 3, brandName: "Coselgi", name: "Pil 312", salePrice: 19800 },
+    ];
+    const { rows, counts } = previewPriceChange(models, { mode: "percent", value: -12, roundTo: 100 });
+    expect(rows.map((row) => [row.productId, row.oldPrice, row.newPrice, row.status])).toEqual([
+      [1, 18500, 16300, "ok"],
+      [2, 40, 0, "bad"], // 35.2 rounds to 0 at 100 TL
+      [3, 19800, 17400, "ok"],
+    ]);
+    expect(counts).toEqual({ total: 3, ok: 2, same: 0, bad: 1 });
+
+    const same = previewPriceChange([models[2]], { mode: "set", value: 19800 });
+    expect(same.rows[0].status).toBe("same");
+    expect(same.counts.same).toBe(1);
+
+    const pending = previewPriceChange(models, { mode: "percent", value: null, roundTo: 0 });
+    expect(pending.rows.every((row) => row.newPrice === null && row.status === null)).toBe(true);
+    expect(pending.counts).toEqual({ total: 3, ok: 0, same: 0, bad: 0 });
+  });
+
+  it("reads the value box", () => {
+    expect(parsePriceValue("percent", "7,5")).toBe(7.5);
+    expect(parsePriceValue("percent", "-12")).toBe(-12);
+    expect(parsePriceValue("percent", "+5 %")).toBe(5);
+    expect(parsePriceValue("percent", "7,555")).toBeNull();
+    expect(parsePriceValue("amount", "-1.250,50")).toBe(-1250.5);
+    expect(parsePriceValue("amount", "+2,5")).toBe(2.5);
+    expect(parsePriceValue("set", "20.000")).toBe(20000);
+    expect(parsePriceValue("set", "-5")).toBeNull();
+    expect(parsePriceValue("set", "")).toBeNull();
+  });
+
+  it("checks the change and builds the database arguments", () => {
+    expect(priceChangeError({ mode: "x", value: 1, roundTo: 0 })).toMatch(/yöntemini/);
+    expect(priceChangeError({ mode: "percent", value: null, roundTo: 0 })).toMatch(/7,5/);
+    expect(priceChangeError({ mode: "percent", value: -100, roundTo: 0 })).toMatch(/-100 ile 1000/);
+    expect(priceChangeError({ mode: "set", value: 0 })).toMatch(/sıfırdan büyük/);
+    expect(priceChangeError({ mode: "amount", value: 10, roundTo: 5 })).toMatch(/Yuvarlama/);
+    expect(priceChangeError({ mode: "amount", value: 1.005, roundTo: 0 })).toMatch(/iki ondalık/);
+    expect(priceChangeError({ mode: "percent", value: 7.5, roundTo: 10 })).toBeNull();
+
+    expect(buildBulkPriceArgs({ productIds: [3, "3", 5], mode: "percent", value: 7.5, roundTo: "10" })).toEqual({
+      args: { productIds: [3, 5], mode: "percent", value: 7.5, roundTo: 10 },
+    });
+    expect(buildBulkPriceArgs({ productIds: [1], mode: "set", value: 100, roundTo: 100 }).args.roundTo).toBe(0);
+    expect(buildBulkPriceArgs({ productIds: [], mode: "set", value: 100 }).error).toMatch(/modelleri seçin/);
+    expect(buildBulkPriceArgs({ productIds: [1, "x"], mode: "set", value: 100 }).error).toMatch(/modelleri seçin/);
+  });
+
+  it("labels the last batch", () => {
+    expect(priceBatchLabel({ changedAtText: "14.11.2026 15:10", count: 5, names: ["Alpha 5", "Alpha 3"] })).toBe(
+      "Son fiyat güncellemesi: 14.11.2026 15:10 · 5 model (Alpha 5, Alpha 3 …)"
+    );
+    expect(priceBatchLabel({ changedAtText: "14.11.2026 15:10", count: 1, names: ["Alpha 5"] })).toBe(
+      "Son fiyat güncellemesi: 14.11.2026 15:10 · 1 model (Alpha 5)"
+    );
+  });
+});
+
+describe("service price list rules", () => {
+  it("checks a service item", () => {
+    expect(buildServiceItem({ category: "service", name: "  Kalıp   ücreti ", price: 2000 }, { isNew: true })).toEqual({
+      values: { name: "Kalıp ücreti", price: 2000, category: "service" },
+    });
+    expect(buildServiceItem({ name: "REM", price: 15000.555 }, { isNew: false })).toEqual({ values: { name: "REM", price: 15000.56 } });
+    expect(buildServiceItem({ category: "service", name: " ", price: 1 }, { isNew: true }).error).toMatch(/adı zorunlu/);
+    expect(buildServiceItem({ category: "service", name: "x".repeat(121), price: 1 }, { isNew: true }).error).toMatch(/120/);
+    expect(buildServiceItem({ category: "service", name: "A", price: 0 }, { isNew: true }).error).toMatch(/sıfırdan büyük/);
+    expect(buildServiceItem({ category: "service", name: "A", price: null }, { isNew: true }).error).toMatch(/biçiminde/);
+    expect(buildServiceItem({ category: "other", name: "A", price: 1 }, { isNew: true }).error).toMatch(/Grubu/);
+    expect(serviceCategoryLabel("audiology_exam")).toBe("Odyolojik Muayene");
   });
 });
 

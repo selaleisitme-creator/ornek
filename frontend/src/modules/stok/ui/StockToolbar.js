@@ -6,11 +6,11 @@ import ScanInput from "@/modules/shared/ui/ScanInput";
 import Tabs from "@/modules/shared/ui/Tabs";
 import { scanToSearchText } from "../stockRules";
 import StockEntryButton from "./StockEntryButton";
-import { StockRemoveButton } from "./StockActionButtons";
+import { PriceUpdateButton, StockRemoveButton } from "./StockActionButtons";
 
-// Search box, "Stok ekle" and the view switch. A scanner (or Enter) writes the search into ?ara=, so the
-// server does the lookup and the result survives a refresh. "Stok sil" works on the open model (removal is
-// { model, units } or null); the price button joins this bar in a later PR.
+// Search box, "Stok ekle", "Stok sil", "Fiyat güncelle" and the view switch. A scanner (or Enter) writes the
+// search into ?ara=, so the server does the lookup and the result survives a refresh. "Stok sil" works on
+// the open model (removal is { model, units } or null).
 export default function StockToolbar({ searchText, clearHref, entryOptions, removal }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -39,6 +39,7 @@ export default function StockToolbar({ searchText, clearHref, entryOptions, remo
       <div className="stock-actions">
         <StockEntryButton options={entryOptions} />
         <StockRemoveButton model={removal?.model ?? null} units={removal?.units ?? []} />
+        <PriceUpdateButton />
         <Tabs
           param="gorunum"
           variant="chips"

@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import ProductEditDialog from "./ProductEditDialog";
 import UnitEditDialog from "./UnitEditDialog";
 import StockRemoveDialog from "./StockRemoveDialog";
+import PriceUpdateDialog from "./PriceUpdateDialog";
+import ServiceItemDialog from "./ServiceItemDialog";
+import ConfirmDialog from "@/modules/shared/ui/ConfirmDialog";
+import { useToast } from "@/modules/shared/ui/Toast";
+import { removeServiceItem } from "../server/actions";
 
 // Small client islands for the stock list: a button and the window it opens. The list itself stays a Server
 // Component, so only these buttons and their windows ship JavaScript. Each window is mounted only while
@@ -71,5 +76,75 @@ export function StockRemoveButton({ model, units, ghost = true }) {
       </button>
       {open && model && <StockRemoveDialog model={model} units={units} onClose={() => setOpen(false)} />}
     </>
+  );
+}
+
+// "Fiyat güncelle" in the toolbar. The window loads the models itself when it opens.
+export function PriceUpdateButton() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className="ui-button ui-button-ghost" onClick={() => setOpen(true)}>
+        ₺ Fiyat güncelle
+      </button>
+      {open && <PriceUpdateDialog onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+// "Kalem ekle" at the head of a service group.
+export function ServiceAddButton({ category, categoryLabel }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className="ui-button ui-button-ghost" onClick={() => setOpen(true)}>
+        ＋ Kalem ekle
+      </button>
+      {open && <ServiceItemDialog item={null} category={category} categoryLabel={categoryLabel} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+// "Düzenle" and "Kaldır" on a service item. Removing only hides it (active = false), so no code is asked.
+export function ServiceItemActions({ item, categoryLabel }) {
+  const toast = useToast();
+  const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function remove() {
+    setBusy(true);
+    try {
+      const result = await removeServiceItem(item.id);
+      if (result?.ok) toast(`${item.name} listeden kaldırıldı.`);
+      else toast(result?.error ?? "Kalem kaldırılamadı.", "error");
+    } finally {
+      setBusy(false);
+      setConfirming(false);
+    }
+  }
+
+  return (
+    <span className="stock-row-actions">
+      <button type="button" className="stock-link-button" onClick={() => setEditing(true)} aria-label={`${item.name} düzenle`}>
+        Düzenle
+      </button>
+      <button type="button" className="stock-link-button stock-link-danger" onClick={() => setConfirming(true)} aria-label={`${item.name} kaldır`}>
+        Kaldır
+      </button>
+      {editing && <ServiceItemDialog item={item} categoryLabel={categoryLabel} onClose={() => setEditing(false)} />}
+      {confirming && (
+        <ConfirmDialog
+          open
+          title="Kalemi kaldır"
+          message={`"${item.name}" servis listesinden kaldırılsın mı? Daha önceki satışlardaki kayıtlar değişmez.`}
+          confirmLabel="Kaldır"
+          danger
+          busy={busy}
+          onConfirm={remove}
+          onCancel={() => setConfirming(false)}
+        />
+      )}
+    </span>
   );
 }

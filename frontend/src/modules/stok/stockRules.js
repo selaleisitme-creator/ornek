@@ -1,4 +1,5 @@
 import { normalizeGtin, parseScan } from "@/lib/gs1";
+import { parseMoney } from "@/lib/money";
 
 // Stock rules shared by the browser and the server: no database, no "server-only", so Vitest can check them.
 
@@ -132,8 +133,14 @@ export function receiptLabel(unit) {
 // Address bar
 // ---------------------------------------------------------------------------
 
-const DEFAULTS = { grup: STOCK_GROUPS[0].key, gorunum: "tablo" };
-const PARAM_ORDER = ["grup", "marka", "ara", "gorunum", "ac"];
+// The page's two sections (?sekme=). The first is the default and stays out of the address.
+export const STOCK_SECTIONS = [
+  { value: "stok", label: "Mevcut stok" },
+  { value: "servis", label: "Servis" },
+];
+
+const DEFAULTS = { sekme: STOCK_SECTIONS[0].value, grup: STOCK_GROUPS[0].key, gorunum: "tablo" };
+const PARAM_ORDER = ["sekme", "grup", "marka", "ara", "gorunum", "ac"];
 
 function first(value) {
   return Array.isArray(value) ? value[0] : value;
@@ -148,7 +155,9 @@ function positiveId(value) {
 // so a hand-edited address never breaks the page.
 export function readStockQuery(params = {}) {
   const ara = String(first(params.ara) ?? "").trim().slice(0, 200);
+  const sekme = first(params.sekme);
   return {
+    sekme: STOCK_SECTIONS.some((section) => section.value === sekme) ? sekme : DEFAULTS.sekme,
     grup: stockGroupByKey(first(params.grup)).key,
     marka: positiveId(params.marka),
     ara: ara || null,
@@ -629,4 +638,173 @@ export function rowBySerial(rows, serial) {
   const wanted = String(serial ?? "").trim();
   if (!wanted) return null;
   return (rows ?? []).find((row) => row.serialNo && row.serialNo.trim() === wanted) ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Bulk sale price update ("Fiyat güncelle"). The dialog previews with these; the server recomputes with the
+// same rule before it calls update_prices_bulk (010), so the preview and the database never disagree.
+// ---------------------------------------------------------------------------
+
+export const PRICE_MODES = [
+  { value: "set", label: "Yeni fiyat" },
+  { value: "percent", label: "% zam / indirim" },
+  { value: "amount", label: "± tutar" },
+];
+
+export const PRICE_ROUNDINGS = [
+  { value: 0, label: "Yok (kuruşlu)" },
+  { value: 1, label: "Tam TL" },
+  { value: 10, label: "10 TL" },
+  { value: 100, label: "100 TL" },
+];
+
+// More than a clinic will ever pick at once, but it keeps one request bounded.
+export const MAX_PRICE_MODELS = 1000;
+
+// numeric(12, 2): prices stay under 10 billion.
+const MAX_PRICE = 1e10;
+
+// A number with at most two decimals → that number × 100 as a whole number, or null. Float noise (7.5 × 100
+// is exact, 1.15 × 100 is 114.999…) is tolerated; a real third decimal is refused.
+function toHundredths(value) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const hundredths = Math.round(value * 100);
+  return Math.abs(value * 100 - hundredths) < 1e-6 ? hundredths : null;
+}
+
+// Postgres round() on numeric: halves go away from zero (2.5 → 3, -2.5 → -3). BigInt keeps it exact.
+function divideRounded(numerator, denominator) {
+  const negative = numerator < 0n;
+  const absolute = negative ? -numerator : numerator;
+  const quotient = absolute / denominator;
+  const rounded = (absolute % denominator) * 2n >= denominator ? quotient + 1n : quotient;
+  return negative ? -rounded : rounded;
+}
+
+// The new sale price exactly as update_prices_bulk computes it:
+//   set     → value, rounded to the kuruş (the rounding choice does not apply);
+//   percent → price × (1 + value / 100);  amount → price + value;
+//   then rounded to the kuruş (roundTo 0) or round(x / roundTo) × roundTo.
+// Worked in whole kuruş with BigInt: Postgres numeric is exact decimal arithmetic, while in floats
+// 18500 × 1.075 is 19887.499999…, which would round the other way at a half. Null when it cannot be priced.
+export function computeNewPrice(oldPrice, { mode, value, roundTo = 0 } = {}) {
+  const valueHundredths = toHundredths(value);
+  if (valueHundredths === null) return null;
+  if (mode === "set") return valueHundredths / 100;
+
+  const oldKurus = toHundredths(typeof oldPrice === "string" ? Number(oldPrice) : oldPrice);
+  if (oldKurus === null || !PRICE_ROUNDINGS.some((option) => option.value === roundTo)) return null;
+
+  // The exact new price in kuruş is numerator / denominator.
+  let numerator;
+  let denominator;
+  if (mode === "percent") {
+    numerator = BigInt(oldKurus) * BigInt(10000 + valueHundredths);
+    denominator = 10000n;
+  } else if (mode === "amount") {
+    numerator = BigInt(oldKurus + valueHundredths);
+    denominator = 1n;
+  } else {
+    return null;
+  }
+  const step = BigInt(roundTo === 0 ? 1 : roundTo * 100);
+  return Number(divideRounded(numerator, denominator * step) * step) / 100;
+}
+
+// A price change → the first problem in Turkish, or null.
+export function priceChangeError(change) {
+  const mode = change?.mode;
+  if (!PRICE_MODES.some((option) => option.value === mode)) return "Fiyat güncelleme yöntemini seçin.";
+  const value = change?.value;
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return mode === "percent" ? "Yüzdeyi 7,5 ya da -12 biçiminde yazın." : "Tutarı 7.491,64 biçiminde yazın.";
+  }
+  if (toHundredths(value) === null) return "En fazla iki ondalık basamak yazılabilir.";
+  if (mode === "set" && !(value > 0)) return "Yeni fiyat sıfırdan büyük olmalı.";
+  if (mode === "percent" && !(value > -100 && value <= 1000)) return "Yüzde -100 ile 1000 arasında olmalı.";
+  if (Math.abs(value) >= MAX_PRICE) return "Tutar çok büyük.";
+  if (mode !== "set" && !PRICE_ROUNDINGS.some((option) => option.value === change?.roundTo)) return "Yuvarlamayı seçin.";
+  return null;
+}
+
+// The selected models → one preview row each and the counts the dialog needs:
+//   ok: the price changes, same: it would stay as it is, bad: the new price would be zero or less.
+// models: [{ id, brandName, name, salePrice }]. With an unusable change the rows have no new price yet.
+export function previewPriceChange(models, change) {
+  const usable = !priceChangeError(change);
+  const rows = (models ?? []).map((model) => {
+    const oldPrice = Number(model.salePrice);
+    const newPrice = usable ? computeNewPrice(oldPrice, change) : null;
+    let status = null;
+    if (newPrice !== null) status = newPrice <= 0 ? "bad" : newPrice === oldPrice ? "same" : "ok";
+    return { productId: model.id, brandName: model.brandName ?? "", name: model.name, oldPrice, newPrice, status };
+  });
+  const count = (status) => rows.filter((row) => row.status === status).length;
+  return { rows, counts: { total: rows.length, ok: count("ok"), same: count("same"), bad: count("bad") } };
+}
+
+// What the value box accepts. Percent: "7,5", "-12", "+5" (two decimals at most). Prices and amounts use the
+// Turkish money format ("1.250,50"); an amount may start with "+" or "-". Null when it cannot be read.
+export function parsePriceValue(mode, text) {
+  const cleaned = String(text ?? "").trim();
+  if (!cleaned) return null;
+  if (mode === "percent") {
+    const compact = cleaned.replace(/\s|%/g, "");
+    if (!/^[+-]?\d{1,4}([.,]\d{1,2})?$/.test(compact)) return null;
+    return Number(compact.replace(",", "."));
+  }
+  const unsigned = mode === "amount" ? cleaned.replace(/^\+\s*/, "") : cleaned;
+  if (mode === "set" && unsigned.startsWith("-")) return null;
+  return parseMoney(unsigned);
+}
+
+// The window's input → the update_prices_bulk arguments, or the first problem in Turkish. "Yeni fiyat" is
+// always rounded to the kuruş, so its rounding is sent as 0.
+export function buildBulkPriceArgs(input) {
+  const productIds = cleanUnitIds(input?.productIds, MAX_PRICE_MODELS);
+  if (!productIds) return { error: `Fiyatı değişecek modelleri seçin (en fazla ${MAX_PRICE_MODELS}).` };
+  const mode = input?.mode;
+  const roundTo = mode === "set" ? 0 : Number(input?.roundTo);
+  const change = { mode, value: input?.value, roundTo };
+  const problem = priceChangeError(change);
+  if (problem) return { error: problem };
+  return { args: { productIds, mode, value: toHundredths(change.value) / 100, roundTo } };
+}
+
+// "Son fiyat güncellemesi: 14.11.2026 15:10 · 5 model (Alpha 5, Alpha 3 …)"; the date arrives formatted.
+export function priceBatchLabel({ changedAtText, count, names = [] }) {
+  const more = count > names.length ? " …" : "";
+  const list = names.length ? ` (${names.join(", ")}${more})` : "";
+  return `Son fiyat güncellemesi: ${changedAtText} · ${count} model${list}`;
+}
+
+// ---------------------------------------------------------------------------
+// Service price list ("Servis"). Same list as the services.category check in 001_stock.sql.
+// ---------------------------------------------------------------------------
+
+export const SERVICE_CATEGORIES = [
+  { value: "service", label: "Servis" },
+  { value: "audiology_exam", label: "Odyolojik Muayene" },
+];
+
+export function serviceCategoryLabel(category) {
+  return SERVICE_CATEGORIES.find((option) => option.value === category)?.label ?? "—";
+}
+
+// "Kalem ekle / Düzenle" input → the services columns, or the first problem in Turkish. The category is
+// checked only when adding: an existing item keeps its group.
+export function buildServiceItem(input, { isNew }) {
+  const name = String(input?.name ?? "").trim().replace(/\s+/g, " ");
+  if (!name) return { error: "Kalem adı zorunlu." };
+  if (name.length > 120) return { error: "Kalem adı en fazla 120 karakter olabilir." };
+  const price = input?.price;
+  if (typeof price !== "number" || !Number.isFinite(price)) return { error: "Fiyatı 7.491,64 biçiminde yazın." };
+  if (!(price > 0)) return { error: "Fiyat sıfırdan büyük olmalı." };
+  if (price >= MAX_PRICE) return { error: "Fiyat çok büyük." };
+  const values = { name, price: Math.round(price * 100) / 100 };
+  if (isNew) {
+    if (!SERVICE_CATEGORIES.some((option) => option.value === input?.category)) return { error: "Grubu seçin." };
+    values.category = input.category;
+  }
+  return { values };
 }
