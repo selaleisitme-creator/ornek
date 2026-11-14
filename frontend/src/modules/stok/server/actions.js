@@ -7,11 +7,14 @@ import { toActionResult } from "@/modules/shared/server/actionResult";
 import * as catalogService from "./catalogService";
 import * as stockEntryService from "./stockEntryService";
 import * as stockRemovalService from "./stockRemovalService";
+import * as priceService from "./priceService";
+import * as serviceCatalogService from "./serviceCatalogService";
 
 // Thin gate for the stock page: check who is asking, hand the work to the service, refresh the page.
 // Interns may do everything here too (plan 1.5.1) except correcting a purchase price, which is the admin's.
 // Which actions ask for the 6-digit code again follows the Faz 1 plan, section 5: deactivating a model,
-// correcting a purchase price and removing stock. Called with plain objects, except the photo upload.
+// correcting a purchase price, removing stock, and a bulk price change or its undo. Called with plain
+// objects, except the photo upload.
 
 export async function addBrand(name) {
   return toActionResult(async () => {
@@ -114,4 +117,42 @@ export async function correctUnitPurchasePrice(input) {
 
 export async function removeStockUnits(input) {
   return asStaffWithCode(() => stockRemovalService.removeUnits(input));
+}
+
+// ---------------------------------------------------------------------------
+// Bulk sale prices and the service price list (PR 5)
+// ---------------------------------------------------------------------------
+
+// A read for the "Fiyat güncelle" window, loaded when it opens instead of with every page view.
+export async function loadPriceModels() {
+  return toActionResult(async () => {
+    await requireStaff();
+    return priceService.getPriceModels();
+  });
+}
+
+export async function applyBulkPrices(input) {
+  return asStaffWithCode(() => priceService.applyBulkPrices(input));
+}
+
+export async function undoLastPriceBatch(batchId) {
+  return asStaffWithCode(() => priceService.undoLastPriceBatch(batchId));
+}
+
+// No code here (plan section 5): one price at a time, and the services trigger keeps every old price.
+export async function saveServiceItem(input) {
+  return toActionResult(async () => {
+    await requireStaff();
+    const item = await serviceCatalogService.saveServiceItem(input);
+    refresh();
+    return item;
+  });
+}
+
+export async function removeServiceItem(id) {
+  return toActionResult(async () => {
+    await requireStaff();
+    await serviceCatalogService.removeServiceItem(id);
+    refresh();
+  });
 }
