@@ -214,3 +214,265 @@ function gtinVariants(code) {
   const short = normalizeGtin(code);
   return short.length === 13 ? [short, `0${short}`] : [short];
 }
+
+// ---------------------------------------------------------------------------
+// Stock entry ("Stok ekle"). The dialog uses these for instant feedback; the server runs the same checks
+// again before it calls create_stock_receipt, because the browser can be bypassed.
+// ---------------------------------------------------------------------------
+
+export const MAX_ENTRY_UNITS = 500;
+
+export const SERIAL_POLICIES = [
+  { value: "required", label: "Zorunlu" },
+  { value: "optional", label: "İsteğe bağlı" },
+  { value: "none", label: "Kullanılmıyor" },
+];
+
+export function serialPolicyLabel(policy) {
+  return SERIAL_POLICIES.find((option) => option.value === policy)?.label ?? "—";
+}
+
+// Receivers and domes usually come without a serial number on the box; devices, chargers and battery
+// packs carry one.
+export function defaultSerialPolicy(category) {
+  return category === "receiver" || category === "dome" ? "none" : "required";
+}
+
+// "" means "not given": the database stores null, which the unit list shows as "Belirtilmedi".
+export const EAR_SIDE_OPTIONS = [
+  { value: "", label: "Belirtilmedi" },
+  { value: "right", label: "Sağ" },
+  { value: "left", label: "Sol" },
+  { value: "both", label: "İki kulak" },
+  { value: "none", label: "Taraf yok" },
+];
+
+// Ways a purchase can be paid. Paynet and installments are how patients pay the clinic, not how the
+// clinic pays suppliers, so they are left out.
+export const PURCHASE_PAYMENT_CODES = ["cash", "card_pos", "transfer", "other"];
+
+// The same split as create_stock_receipt: every unit gets the total divided and rounded to the kuruş, the
+// last one takes the remainder, so the units add up to exactly the total (the cash ledger sums units).
+// Worked in whole kuruş so float error cannot shift a cent. 30000 / 7 → six 4285.71 and one 4285.74.
+export function splitTotalCost(total, count) {
+  if (!Number.isInteger(count) || count < 1 || !Number.isFinite(total)) return [];
+  const totalKurus = Math.round(total * 100);
+  const base = Math.round(totalKurus / count);
+  const last = totalKurus - base * (count - 1);
+  return [...Array(count - 1).fill(base), last].map((kurus) => kurus / 100);
+}
+
+function wholeOrZero(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : 0;
+}
+
+// Battery helper: "2 koli + 3 kutu + 4 paket" → packs. Null when boxes or cartons are given but the model
+// does not say how many packs a box (or boxes a carton) holds, because then there is nothing to multiply.
+export function packsFromPackaging({ cartons, boxes, packs } = {}, { packsPerBox, boxesPerCarton } = {}) {
+  const c = wholeOrZero(cartons);
+  const b = wholeOrZero(boxes);
+  const p = wholeOrZero(packs);
+  const perBox = wholeOrZero(packsPerBox);
+  const perCarton = wholeOrZero(boxesPerCarton);
+  if ((b || c) && !perBox) return null;
+  if (c && !perCarton) return null;
+  return p + b * perBox + c * perCarton * perBox;
+}
+
+// A typed or scanned GTIN → its stored form (13 digits when a GTIN-14 starts with 0). Spaces are ignored;
+// letters are an error instead of being dropped, so a mistyped code is never saved as a different one.
+export function cleanGtin(text) {
+  const compact = String(text ?? "").replace(/\s/g, "");
+  if (!compact) return { gtin: null, error: null };
+  if (!/^\d+$/.test(compact)) return { gtin: null, error: "GTIN yalnızca rakamlardan oluşmalı." };
+  const gtin = normalizeGtin(compact);
+  if (gtin.length < 8 || gtin.length > 14) return { gtin: null, error: "GTIN 8 ile 14 hane arasında olmalı." };
+  return { gtin, error: null };
+}
+
+export function sameGtin(a, b) {
+  return Boolean(a && b) && normalizeGtin(a) === normalizeGtin(b);
+}
+
+// The first serial number that appears twice in the list (ignoring surrounding spaces), or null.
+export function findDuplicateSerial(serials) {
+  const seen = new Set();
+  for (const serial of serials) {
+    const text = String(serial ?? "").trim();
+    if (!text) continue;
+    if (seen.has(text)) return text;
+    seen.add(text);
+  }
+  return null;
+}
+
+function isOptionalWhole(value, { min }) {
+  if (value === null || value === undefined || value === "") return true;
+  const number = Number(value);
+  return Number.isInteger(number) && number >= min;
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// A new model's fields → the first problem as a Turkish sentence, or null when it can be saved.
+export function newModelError(model) {
+  if (!Number.isSafeInteger(Number(model?.brandId)) || !(Number(model?.brandId) > 0)) return "Marka seçin.";
+  const name = String(model.name ?? "").trim();
+  if (!name) return "Model adı zorunlu.";
+  if (name.length > 120) return "Model adı en fazla 120 karakter olabilir.";
+  if (!(Number(model.salePrice) > 0)) return "Satış fiyatı sıfırdan büyük olmalı.";
+  const gtin = cleanGtin(model.gtin);
+  if (gtin.error) return gtin.error;
+  if (!isOptionalWhole(model.warrantyMonths, { min: 0 })) return "Garanti süresi ay olarak tam sayı olmalı.";
+  if (!isOptionalWhole(model.minStock, { min: 0 })) return "Alt stok eşiği sıfır ya da daha büyük bir tam sayı olmalı.";
+  if (!SERIAL_POLICIES.some((option) => option.value === model.serialPolicy)) return "Seri numarası kuralını seçin.";
+  if (model.category === "battery") {
+    if (!model.packSize || !isOptionalWhole(model.packSize, { min: 1 })) return "Paket içindeki pil adedini girin.";
+    if (!isOptionalWhole(model.packsPerBox, { min: 1 })) return "Kutudaki paket sayısı pozitif bir tam sayı olmalı.";
+    if (!isOptionalWhole(model.boxesPerCarton, { min: 1 })) return "Kolideki kutu sayısı pozitif bir tam sayı olmalı.";
+  }
+  return null;
+}
+
+// The entry step (units and purchase) → the first problem as a Turkish sentence, or null.
+//   units: [{ serialNo, productionDate }], amount: number or null, today: "YYYY-MM-DD" in Istanbul.
+export function entryError({ units, serialPolicy, opening, priceMode, amount, paymentMethod, receivedOn, today }) {
+  const count = units?.length ?? 0;
+  if (count < 1 || count > MAX_ENTRY_UNITS) return `Stok adedi 1 ile ${MAX_ENTRY_UNITS} arasında olmalı.`;
+
+  const serials = units.map((unit) => String(unit.serialNo ?? "").trim());
+  if (serialPolicy === "required") {
+    const missing = serials.findIndex((serial) => !serial);
+    if (missing !== -1) return `Bu modelde seri numarası zorunlu (${missing + 1}. satır boş).`;
+  }
+  if (serialPolicy === "none" && serials.some(Boolean)) {
+    return "Bu model seri numarasız takip ediliyor; seri numarası girmeyin.";
+  }
+  const duplicate = findDuplicateSerial(serials);
+  if (duplicate) return `${duplicate} seri numarası listede iki kez var.`;
+  if (serials.some((serial) => serial.length > 60)) return "Seri numarası en fazla 60 karakter olabilir.";
+
+  for (const unit of units) {
+    const date = unit.productionDate || "";
+    if (date && (!DATE_RE.test(date) || date > today)) return "Üretim tarihi geçerli ve bugünden sonra olmayan bir tarih olmalı.";
+  }
+
+  if (priceMode !== "unit" && priceMode !== "total") return "Birim ya da toplam alış tutarını seçin.";
+  const hasAmount = amount !== null && amount !== undefined;
+  if (hasAmount && !(Number.isFinite(amount) && amount >= 0)) return "Alış tutarı geçersiz.";
+  if (!opening) {
+    if (!(amount > 0)) return "Alış tutarı sıfırdan büyük olmalı.";
+    if (!paymentMethod) return "Alış ödeme şeklini seçin.";
+    if (!receivedOn || !DATE_RE.test(receivedOn)) return "Giriş tarihini girin.";
+    if (receivedOn > today) return "Giriş tarihi bugünden sonra olamaz.";
+  }
+  if (priceMode === "total" && amount > 0 && splitTotalCost(amount, count).some((price) => price < 0)) {
+    return "Toplam tutar bu kadar birime bölünemeyecek kadar küçük.";
+  }
+  return null;
+}
+
+function text(value, max) {
+  const cleaned = String(value ?? "").trim();
+  return cleaned ? cleaned.slice(0, max) : null;
+}
+
+function optionalWhole(value) {
+  return value === null || value === undefined || value === "" ? null : Number(value);
+}
+
+// Money from the browser arrives as a number (MoneyInput parses the Turkish text). Anything else is
+// "invalid", kept apart from "not given" so a broken value is never quietly treated as no price.
+function toAmount(value) {
+  if (value === null || value === undefined || value === "") return null;
+  return typeof value === "number" && Number.isFinite(value) ? Math.round(value * 100) / 100 : Number.NaN;
+}
+
+const EAR_SIDES = new Set(EAR_SIDE_OPTIONS.map((option) => option.value).filter(Boolean));
+
+// The window's input → the three create_stock_receipt arguments, or the first problem in Turkish.
+//   existing: the product row read from the database ({ id, category, unit, serial_policy, active }) when an
+//             existing model was chosen, so its serial rule comes from the database, not from the browser.
+//   today:    "YYYY-MM-DD" in Istanbul.
+export function buildStockEntryArgs(input, { existing = null, today }) {
+  const isNew = !existing;
+  const source = input?.product ?? {};
+  const category = isNew ? String(source.category ?? "") : existing.category;
+  if (!STOCK_GROUPS.some((group) => group.category === category)) return { error: "Ürün grubunu seçin." };
+
+  const serialPolicy = isNew ? source.serialPolicy : existing.serial_policy;
+  if (isNew) {
+    const problem = newModelError({ ...source, category });
+    if (problem) return { error: problem };
+  }
+
+  const raw = input?.receipt ?? {};
+  const opening = raw.opening === true;
+  const priceMode = raw.priceMode;
+  const amount = toAmount(raw.amount);
+  const paymentMethod = opening ? null : text(raw.paymentMethod, 40);
+  if (paymentMethod && !PURCHASE_PAYMENT_CODES.includes(paymentMethod)) return { error: "Alış ödeme şeklini seçin." };
+  const receivedOn = opening ? null : text(raw.receivedOn, 10);
+
+  const sided = hasEarSides(category);
+  const rawUnits = Array.isArray(input?.units) ? input.units : [];
+  const units = rawUnits.map((unit) => ({
+    serial_no: text(unit?.serialNo, 200),
+    ear_side: sided && EAR_SIDES.has(unit?.earSide) ? unit.earSide : null,
+    production_date: text(unit?.productionDate, 10),
+    wsa_code: null, // WSA is filled after the sale (Faz 2), not on the shelf
+  }));
+
+  const problem = entryError({
+    units: units.map((unit) => ({ serialNo: unit.serial_no, productionDate: unit.production_date })),
+    serialPolicy,
+    opening,
+    priceMode,
+    amount,
+    paymentMethod,
+    receivedOn,
+    today,
+  });
+  if (problem) return { error: problem };
+
+  // Opening stock with no price (or 0): send none, so the database copies the model's purchase price.
+  const sentAmount = amount > 0 ? amount : null;
+  const receipt = {
+    opening,
+    supplier_id: opening ? null : Number(raw.supplierId) || null,
+    received_on: receivedOn,
+    invoice_no: opening ? null : text(raw.invoiceNo, 60),
+    payment_method: paymentMethod,
+    note: opening ? null : text(raw.note, 500),
+    price_mode: priceMode,
+    amount: sentAmount,
+  };
+
+  let product = { id: existing?.id };
+  if (isNew) {
+    const battery = category === "battery";
+    // The model keeps one unit's price as the suggestion for its next entry.
+    const unitPrice = sentAmount === null ? 0 : priceMode === "total" ? splitTotalCost(sentAmount, units.length)[0] : sentAmount;
+    product = {
+      brand_id: Number(source.brandId),
+      category,
+      name: String(source.name).trim().replace(/\s+/g, " "),
+      type: text(source.type, 120),
+      gtin: cleanGtin(source.gtin).gtin,
+      package_barcode: text(source.packageBarcode, 60),
+      manufacturer_ref: text(source.manufacturerRef, 60),
+      unit: battery ? "pack" : "piece",
+      pack_size: battery ? optionalWhole(source.packSize) : null,
+      packs_per_box: battery ? optionalWhole(source.packsPerBox) : null,
+      boxes_per_carton: battery ? optionalWhole(source.boxesPerCarton) : null,
+      sale_price: Math.round(Number(source.salePrice) * 100) / 100,
+      purchase_price: unitPrice,
+      warranty_months: optionalWhole(source.warrantyMonths) ?? 0,
+      min_stock: optionalWhole(source.minStock) ?? 0,
+      serial_policy: serialPolicy,
+    };
+  }
+
+  return { args: { product, receipt, units } };
+}

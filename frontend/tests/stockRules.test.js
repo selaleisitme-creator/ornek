@@ -20,7 +20,127 @@ import {
   stockHref,
   stockLevelInfo,
   summarizeAlerts,
+  splitTotalCost,
+  packsFromPackaging,
+  cleanGtin,
+  sameGtin,
+  findDuplicateSerial,
+  defaultSerialPolicy,
+  serialPolicyLabel,
+  newModelError,
+  entryError,
+  buildStockEntryArgs,
 } from "@/modules/stok/stockRules";
+
+describe("stock entry rules", () => {
+  it("splits a total like the database: remainder on the last unit, sum unchanged", () => {
+    const prices = splitTotalCost(30000, 7);
+    expect(prices).toEqual([4285.71, 4285.71, 4285.71, 4285.71, 4285.71, 4285.71, 4285.74]);
+    expect(Math.round(prices.reduce((a, b) => a + b, 0) * 100)).toBe(3000000);
+    expect(splitTotalCost(100, 3)).toEqual([33.33, 33.33, 33.34]);
+    expect(splitTotalCost(0.05, 2)).toEqual([0.03, 0.02]); // round half up like Postgres round()
+    expect(splitTotalCost(500, 1)).toEqual([500]);
+    expect(splitTotalCost(100, 0)).toEqual([]);
+  });
+
+  it("counts battery packs from cartons and boxes", () => {
+    expect(packsFromPackaging({ cartons: 2, boxes: 3, packs: 4 }, { packsPerBox: 10, boxesPerCarton: 6 })).toBe(154);
+    expect(packsFromPackaging({ packs: 5 }, {})).toBe(5);
+    expect(packsFromPackaging({ boxes: 1 }, {})).toBeNull();
+    expect(packsFromPackaging({ cartons: 1 }, { packsPerBox: 10 })).toBeNull();
+  });
+
+  it("cleans GTINs and compares the 13 and 14 digit forms", () => {
+    expect(cleanGtin("05714464091134")).toEqual({ gtin: "5714464091134", error: null });
+    expect(cleanGtin(" ")).toEqual({ gtin: null, error: null });
+    expect(cleanGtin("57A44").error).toMatch(/rakam/);
+    expect(cleanGtin("1234567").error).toMatch(/8 ile 14/);
+    expect(sameGtin("05714464091134", "5714464091134")).toBe(true);
+    expect(sameGtin("5714464091134", null)).toBe(false);
+  });
+
+  it("finds a repeated serial and labels the serial rules", () => {
+    expect(findDuplicateSerial(["A1", " B2", "", "", "B2 "])).toBe("B2");
+    expect(findDuplicateSerial(["A1", "", ""])).toBeNull();
+    expect(defaultSerialPolicy("device")).toBe("required");
+    expect(defaultSerialPolicy("battery")).toBe("required");
+    expect(defaultSerialPolicy("dome")).toBe("none");
+    expect(serialPolicyLabel("optional")).toBe("İsteğe bağlı");
+  });
+
+  const goodModel = { brandId: 3, category: "device", name: "Viron 9", salePrice: 45000, serialPolicy: "required" };
+
+  it("checks a new model", () => {
+    expect(newModelError(goodModel)).toBeNull();
+    expect(newModelError({ ...goodModel, brandId: null })).toMatch(/Marka/);
+    expect(newModelError({ ...goodModel, name: "  " })).toMatch(/Model adı/);
+    expect(newModelError({ ...goodModel, salePrice: 0 })).toMatch(/Satış fiyatı/);
+    expect(newModelError({ ...goodModel, gtin: "12" })).toMatch(/GTIN/);
+    expect(newModelError({ ...goodModel, category: "battery" })).toMatch(/pil adedini/);
+    expect(newModelError({ ...goodModel, category: "battery", packSize: 6 })).toBeNull();
+  });
+
+  const purchase = { opening: false, priceMode: "unit", amount: 1000, paymentMethod: "cash", receivedOn: "2026-11-14", today: "2026-11-14" };
+
+  it("checks the entry step", () => {
+    const units = [{ serialNo: "A1" }, { serialNo: "A2" }];
+    expect(entryError({ ...purchase, units, serialPolicy: "required" })).toBeNull();
+    expect(entryError({ ...purchase, units: [], serialPolicy: "required" })).toMatch(/1 ile 500/);
+    expect(entryError({ ...purchase, units: [{ serialNo: "A1" }, { serialNo: "" }], serialPolicy: "required" })).toMatch(/2\. satır/);
+    expect(entryError({ ...purchase, units, serialPolicy: "none" })).toMatch(/seri numarasız/);
+    expect(entryError({ ...purchase, units: [{ serialNo: "A1" }, { serialNo: "A1" }], serialPolicy: "optional" })).toMatch(/iki kez/);
+    expect(entryError({ ...purchase, units, serialPolicy: "required", amount: null })).toMatch(/sıfırdan büyük/);
+    expect(entryError({ ...purchase, units, serialPolicy: "required", paymentMethod: null })).toMatch(/ödeme şeklini/);
+    expect(entryError({ ...purchase, units, serialPolicy: "required", receivedOn: "2026-11-15" })).toMatch(/bugünden sonra/);
+    expect(entryError({ ...purchase, units, serialPolicy: "required", opening: true, amount: null, paymentMethod: null })).toBeNull();
+    expect(entryError({ ...purchase, units, serialPolicy: "required", amount: Number.NaN })).toMatch(/geçersiz/);
+  });
+
+  it("builds the RPC arguments for two serial devices bought as one total", () => {
+    const built = buildStockEntryArgs(
+      {
+        product: { ...goodModel, type: "RIC", gtin: "05714464091134", warrantyMonths: "24", minStock: "" },
+        receipt: { opening: false, supplierId: 5, receivedOn: "2026-11-14", invoiceNo: " F-123 ", paymentMethod: "transfer", note: "", priceMode: "total", amount: 30000.01 },
+        units: [
+          { serialNo: "SN1", earSide: "right", productionDate: "2024-05-01" },
+          { serialNo: " SN2 ", earSide: "left", productionDate: "" },
+        ],
+      },
+      { today: "2026-11-14" }
+    );
+    expect(built.error).toBeUndefined();
+    expect(built.args.product).toMatchObject({ brand_id: 3, category: "device", gtin: "5714464091134", unit: "piece", purchase_price: 15000.01, warranty_months: 24, min_stock: 0, serial_policy: "required" });
+    expect(built.args.receipt).toEqual({
+      opening: false, supplier_id: 5, received_on: "2026-11-14", invoice_no: "F-123", payment_method: "transfer", note: null, price_mode: "total", amount: 30000.01,
+    });
+    expect(built.args.units[1]).toEqual({ serial_no: "SN2", ear_side: "left", production_date: null, wsa_code: null });
+  });
+
+  it("builds opening stock for serial-less receivers and trusts the database serial rule", () => {
+    const units = Array.from({ length: 8 }, () => ({ serialNo: "", earSide: "both", productionDate: "" }));
+    const existing = { id: 17, category: "receiver", unit: "piece", serial_policy: "none", active: true };
+    const built = buildStockEntryArgs(
+      { product: { id: 17, serialPolicy: "required" }, receipt: { opening: true, priceMode: "unit", amount: null, paymentMethod: "cash", supplierId: 2 }, units },
+      { existing, today: "2026-11-14" }
+    );
+    expect(built.args.product).toEqual({ id: 17 });
+    expect(built.args.receipt).toEqual({
+      opening: true, supplier_id: null, received_on: null, invoice_no: null, payment_method: null, note: null, price_mode: "unit", amount: null,
+    });
+    expect(built.args.units).toHaveLength(8);
+    expect(built.args.units[0]).toEqual({ serial_no: null, ear_side: "both", production_date: null, wsa_code: null });
+
+    const withSerial = buildStockEntryArgs({ product: { id: 17 }, receipt: { opening: true, priceMode: "unit" }, units: [{ serialNo: "X" }] }, { existing, today: "2026-11-14" });
+    expect(withSerial.error).toMatch(/seri numarasız/);
+  });
+
+  it("drops the ear side outside devices and receivers, and refuses unknown payment methods", () => {
+    const existing = { id: 9, category: "charger", unit: "piece", serial_policy: "optional", active: true };
+    const base = { product: { id: 9 }, receipt: { opening: false, priceMode: "unit", amount: 100, paymentMethod: "cash", receivedOn: "2026-11-01" } };
+    expect(buildStockEntryArgs({ ...base, units: [{ serialNo: "", earSide: "right" }] }, { existing, today: "2026-11-14" }).args.units[0].ear_side).toBeNull();
+    expect(buildStockEntryArgs({ ...base, receipt: { ...base.receipt, paymentMethod: "paynet" }, units: [{}] }, { existing, today: "2026-11-14" }).error).toMatch(/ödeme/);
+  });
+});
 
 describe("stock groups", () => {
   it("maps URL keys and database categories both ways", () => {
