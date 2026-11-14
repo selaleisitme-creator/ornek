@@ -78,7 +78,7 @@ export async function listAlertRows() {
 }
 
 // "%" and "_" typed by the user are literal characters, not wildcards.
-function escapeLike(text) {
+export function escapeLike(text) {
   return text.replace(/[\\%_]/g, (character) => `\\${character}`);
 }
 
@@ -116,4 +116,31 @@ export async function findProductIdBySerial(serial) {
     .maybeSingle();
   if (error) throw error;
   return data?.product_id ?? null;
+}
+
+// Serial numbers from the list that some unit (in any state) already carries: the database keeps them
+// unique for life, so a sold device's number cannot come back as a new unit. Asked in chunks of 100 so the
+// request address stays short even for a 500-unit entry.
+export async function findExistingSerials(serials) {
+  const found = [];
+  if (!serials.length) return found;
+  const supabase = await createClient();
+  for (let start = 0; start < serials.length; start += 100) {
+    const chunk = serials.slice(start, start + 100);
+    const rows = check(await supabase.from("stock_units").select("serial_no").in("serial_no", chunk));
+    found.push(...rows.map((row) => row.serial_no));
+  }
+  return found;
+}
+
+// Product, receipt and units in one database transaction (010_stock_screen.sql): all or nothing.
+export async function createStockReceipt({ product, receipt, units }) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("create_stock_receipt", {
+    p_product: product,
+    p_receipt: receipt,
+    p_units: units,
+  });
+  if (error) throw error;
+  return data;
 }
