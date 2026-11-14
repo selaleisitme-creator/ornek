@@ -170,6 +170,19 @@ describe("database errors", () => {
     expect(toUserMessage({ message: "Only an admin can correct the purchase price of a stock unit" })).toMatch(/yalnızca yönetici/);
   });
 
+  it("explains the bulk price errors", () => {
+    expect(toUserMessage({ message: "There are no products to update" })).toMatch(/modelleri seçin/);
+    expect(toUserMessage({ message: "Unknown price mode double" })).toMatch(/Fiyat seçeneği/);
+    expect(toUserMessage({ message: "A price change needs a value" })).toMatch(/değer yazın/);
+    expect(toUserMessage({ message: "Prices can only be rounded to 0, 1, 10 or 100" })).toMatch(/Yuvarlama/);
+    expect(toUserMessage({ message: "Some products were not found" })).toMatch(/bulunamadı/);
+    expect(toUserMessage({ message: "A new price would be zero or less; no price was changed" })).toMatch(/sıfır ya da eksi/);
+    expect(toUserMessage({ message: "Price batch 0b6f… not found" })).toMatch(/güncellemesi bulunamadı/);
+    expect(toUserMessage({ message: "A price in this batch was changed again later; undo the newer change first" })).toMatch(
+      /sonradan yeniden değişmiş/
+    );
+  });
+
   it("never shows an unknown database message", () => {
     expect(toUserMessage({ message: "relation public.secret_table does not exist" })).toBe("İşlem tamamlanamadı. Lütfen tekrar deneyin.");
   });
