@@ -148,6 +148,20 @@ describe("database errors", () => {
     expect(toUserMessage({ code: "23505", message: "duplicate key" })).toMatch(/zaten var/);
   });
 
+  it("explains the stock entry errors", () => {
+    expect(toUserMessage({ message: "A stock entry needs between 1 and 500 units" })).toMatch(/1 ile 500/);
+    expect(toUserMessage({ message: "A purchase needs a payment method" })).toMatch(/ödeme şeklini/);
+    expect(toUserMessage({ message: "A purchase needs an amount above zero" })).toMatch(/sıfırdan büyük/);
+    expect(toUserMessage({ message: "The amount cannot be negative" })).toMatch(/eksi olamaz/);
+    expect(toUserMessage({ message: "Product 42 not found or inactive" })).toMatch(/model bulunamadı/);
+    expect(toUserMessage({ message: "This product needs a serial number for every unit" })).toMatch(/seri numarası zorunlu/);
+    expect(toUserMessage({ message: "This product is tracked without a serial number" })).toMatch(/seri numarasız/);
+    const duplicate = (name) => ({ code: "23505", message: `duplicate key value violates unique constraint "${name}"` });
+    expect(toUserMessage(duplicate("stock_units_serial_no_key"))).toMatch(/seri numarası başka bir kayıtta/);
+    expect(toUserMessage(duplicate("products_gtin_key"))).toMatch(/GTIN başka bir modelde/);
+    expect(toUserMessage(duplicate("brands_name_key"))).toMatch(/marka zaten/);
+  });
+
   it("never shows an unknown database message", () => {
     expect(toUserMessage({ message: "relation public.secret_table does not exist" })).toBe("İşlem tamamlanamadı. Lütfen tekrar deneyin.");
   });
