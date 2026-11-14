@@ -144,3 +144,15 @@ export async function createStockReceipt({ product, receipt, units }) {
   if (error) throw error;
   return data;
 }
+
+// Units leave the stock with a reason in one transaction (010_stock_screen.sql): all of them or none.
+export async function removeStockUnits({ unitIds, reason, note }) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("remove_stock_units", {
+    p_unit_ids: unitIds,
+    p_reason: reason,
+    p_note: note,
+  });
+  if (error) throw error;
+  return data;
+}
