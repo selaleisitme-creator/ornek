@@ -15,6 +15,7 @@ const ORDER_KEYS = {
   patient_national_ids: ["patient_id"],
   stock_removals: ["stock_unit_id"],
   sale_tasks: ["sale_id", "link_id"],
+  appointment_reminders: ["appointment_id", "reminder_offset"],
 };
 
 function check({ data, error }) {

@@ -35,6 +35,7 @@ export const BACKUP_TABLES = [
   "appointment_requests",
   "appointment_kinds",
   "appointments",
+  "appointment_reminders",
   "expense_categories",
   "expense_templates",
   "cash_entries",

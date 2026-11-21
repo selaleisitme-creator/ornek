@@ -8,6 +8,7 @@ import {
   fillMonths,
   formatWelcomeClock,
   isSgkInvoiceWindow,
+  isTrackingExempt,
   lastMonths,
   needsFollowUp,
   paymentShares,
@@ -111,3 +112,12 @@ describe("display helpers", () => {
   });
 });
 
+
+describe("isTrackingExempt", () => {
+  it("leaves Coselgi out of the missing tracking info suggestion, whatever the spelling", () => {
+    expect(isTrackingExempt("Coselgi")).toBe(true);
+    expect(isTrackingExempt(" COSELGI ")).toBe(true);
+    expect(isTrackingExempt("Bernafon")).toBe(false);
+    expect(isTrackingExempt(null)).toBe(false);
+  });
+});
