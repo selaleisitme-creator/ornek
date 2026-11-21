@@ -128,7 +128,7 @@ a { color: var(--blue); }
   border-radius: 12px;
   background: var(--blue);
   color: #fff;
-  font: 800 14px/1.2 inherit;
+  font-family: inherit; font-size: 14px; font-weight: 800; line-height: 1.2;
   letter-spacing: .04em;
   text-align: center;
   cursor: pointer;
@@ -146,7 +146,7 @@ a { color: var(--blue); }
   border-radius: 10px;
   background: #fff;
   color: var(--ink);
-  font: 700 13px inherit;
+  font-family: inherit; font-size: 13px; font-weight: 700;
   cursor: pointer;
 }
 .btn-ghost:hover { border-color: var(--blue); background: var(--pale); color: var(--blue); }
