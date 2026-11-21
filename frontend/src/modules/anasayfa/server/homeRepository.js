@@ -229,11 +229,37 @@ export async function listReferralSources() {
   );
 }
 
+// Every appointment that was not cancelled, with its patient and time, so the service can find each
+// patient's first one.
 export async function listAppointmentSources() {
   const supabase = await createClient();
   return readAll(() =>
-    supabase.from("appointments").select("id, referral_source_id, status").neq("status", "cancelled").order("id")
+    supabase
+      .from("appointments")
+      .select("id, patient_id, starts_at, referral_source_id, status")
+      .neq("status", "cancelled")
+      .order("id")
   );
+}
+
+// The source written on each patient ("Bizi nereden duydunuz?"), used when the first appointment has none.
+export async function listPatientSources(patientIds) {
+  if (!patientIds.length) return [];
+  const supabase = await createClient();
+  const rows = [];
+  // Long id lists go in chunks so the request address stays short.
+  for (let start = 0; start < patientIds.length; start += 200) {
+    rows.push(
+      ...check(
+        await supabase
+          .from("patients")
+          .select("id, referral_source_id")
+          .in("id", patientIds.slice(start, start + 200))
+          .not("referral_source_id", "is", null)
+      )
+    );
+  }
+  return rows;
 }
 
 export async function updateReferralSource(id, fields) {

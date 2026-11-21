@@ -9,6 +9,7 @@ import {
   backupProblem,
   bucketSales,
   bucketVisits,
+  countFirstVisitsBySource,
   daysBetween,
   isSgkInvoiceWindow,
   lastMonths,
@@ -361,21 +362,18 @@ function invoiceLinks(links) {
 
 async function getReferralTable() {
   const [sources, appointments] = await Promise.all([repo.listReferralSources(), repo.listAppointmentSources()]);
-  const counts = new Map(sources.map((source) => [source.id, { total: 0, attended: 0, noShow: 0, waiting: 0 }]));
-  for (const appointment of appointments) {
-    const row = counts.get(appointment.referral_source_id);
-    if (!row) continue;
-    row.total += 1;
-    if (appointment.status === "attended") row.attended += 1;
-    else if (appointment.status === "no_show") row.noShow += 1;
-    else if (appointment.status === "waiting") row.waiting += 1;
-  }
+  const patientIds = [...new Set(appointments.map((appointment) => appointment.patient_id))];
+  const patientSources = new Map(
+    (await repo.listPatientSources(patientIds)).map((patient) => [patient.id, patient.referral_source_id])
+  );
+  const counts = countFirstVisitsBySource(appointments, patientSources);
+  const empty = { total: 0, attended: 0, noShow: 0, waiting: 0 };
   const rows = sources.map((source) => ({
     id: source.id,
     name: source.name,
     visible: source.visible,
     icon: referralIcon(source.name),
-    ...counts.get(source.id),
+    ...(counts.get(source.id) ?? empty),
   }));
   const shown = rows.filter((row) => row.visible);
   return { rows, shownTotal: shown.reduce((sum, row) => sum + row.total, 0) };
