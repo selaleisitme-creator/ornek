@@ -216,7 +216,7 @@
 .stock-small-button {
   display: inline-flex; align-items: center; min-height: 38px; padding: 8px 12px;
   border: 1px solid var(--ui-line); border-radius: 10px; background: #fff; color: var(--ui-ink);
-  font: 700 12px/1.2 inherit; white-space: nowrap; cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 700; line-height: 1.2; white-space: nowrap; cursor: pointer;
 }
 .stock-small-button:hover { background: var(--ui-soft); }
 .stock-small-button:focus-visible { outline: 3px solid rgba(36, 77, 156, .25); outline-offset: 2px; }
@@ -321,7 +321,7 @@
 .stock-entry-choices legend { margin-bottom: 8px; padding: 0; }
 .stock-entry-choice {
   min-height: 42px; padding: 8px 14px; border: 1px solid var(--ui-line); border-radius: 10px;
-  background: #fff; color: var(--ui-ink); font: 600 14px/1.2 inherit; cursor: pointer;
+  background: #fff; color: var(--ui-ink); font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.2; cursor: pointer;
 }
 .stock-entry-choice:hover { background: var(--ui-soft); }
 .stock-entry-choice.on { border-color: var(--ui-blue); background: var(--ui-cream); }
@@ -400,7 +400,7 @@
 }
 .stock-photo-remove {
   min-height: 32px; padding: 4px 12px; border: 1px solid var(--ui-line); border-radius: 8px;
-  background: #fff; color: var(--ui-danger); font: 600 13px/1.2 inherit; cursor: pointer;
+  background: #fff; color: var(--ui-danger); font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.2; cursor: pointer;
 }
 .stock-photo-remove:hover { background: var(--ui-soft); }
 
