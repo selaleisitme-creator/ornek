@@ -94,7 +94,7 @@ describe("suggestion windows", () => {
     expect(backupProblem({ enabled: false, now })?.title).toMatch(/kapalı/);
     expect(backupProblem({ enabled: true, lastRun: { status: "failed" }, lastSuccessAt: "2026-11-20T00:00:00Z", now })?.title).toMatch(/alınamadı/);
     expect(backupProblem({ enabled: true, lastRun: null, lastSuccessAt: null, now })?.title).toMatch(/İlk/);
-    expect(backupProblem({ enabled: true, lastRun: { status: "succeeded" }, lastSuccessAt: "2026-11-10T00:00:00Z", now })?.title).toMatch(/7 günden/);
+    expect(backupProblem({ enabled: true, lastRun: { status: "succeeded" }, lastSuccessAt: "2026-11-10T00:00:00Z", now })?.title).toMatch(/8 günden/);
     expect(backupProblem({ enabled: true, lastRun: { status: "succeeded" }, lastSuccessAt: "2026-11-19T00:00:00Z", now })).toBeNull();
   });
 });

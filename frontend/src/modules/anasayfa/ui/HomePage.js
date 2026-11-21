@@ -24,7 +24,7 @@ async function HomeContent() {
   // The suggestions compare dates with today; under cacheComponents that is request-time work.
   await io();
   const staff = await getStaffProfile();
-  const view = await getHomeView({ canSeeMoney: Boolean(staff?.canViewAccounting) });
+  const view = await getHomeView({ canSeeMoney: Boolean(staff?.canViewAccounting), isAdmin: Boolean(staff?.isAdmin) });
   return <HomeView view={view} />;
 }
 

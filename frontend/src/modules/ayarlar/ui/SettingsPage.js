@@ -8,6 +8,8 @@ import GeneralSettingsForm from "./GeneralSettingsForm";
 import SecuritySettingsForm from "./SecuritySettingsForm";
 import WebBookingCard from "./WebBookingCard";
 import WhatsAppCard from "./WhatsAppCard";
+import BackupCard from "./BackupCard";
+import { getBackupView } from "../server/backupService";
 import { getRequestSummary } from "@/modules/randevular/server/appointmentRequestsRepository";
 import "./settings.css";
 
@@ -15,11 +17,12 @@ import "./settings.css";
 // (their actions check the role again, and the database once more).
 export default async function SettingsPage() {
   const staff = await getStaffProfile();
-  const [settings, account, users, booking] = await Promise.all([
+  const [settings, account, users, booking, backup] = await Promise.all([
     getSettings(),
     getAccountInfo(),
     staff?.isAdmin ? listUsers() : null,
     getRequestSummary(),
+    getBackupView(),
   ]);
 
   return (
@@ -43,6 +46,8 @@ export default async function SettingsPage() {
           <WhatsAppCard whatsappNumber={settings.whatsapp_number} />
         </div>
       </div>
+
+      <BackupCard backup={backup} isAdmin={Boolean(staff?.isAdmin)} />
 
       {staff?.isAdmin && <UsersCard users={users} currentUserId={staff.userId} />}
     </section>
