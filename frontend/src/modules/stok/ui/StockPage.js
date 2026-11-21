@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import Link from "next/link";
+import Skeleton from "@/modules/shared/ui/Skeleton";
 import { io } from "next/cache";
 import EmptyState from "@/modules/shared/ui/EmptyState";
 import { getStockView } from "../server/stockService";
@@ -19,26 +21,43 @@ import "./stock.css";
 // Stok: "Mevcut stok" (default) and "Servis" (?sekme=servis). Everything that changes the view lives in the
 // address bar (?sekme, ?grup, ?marka, ?ara, ?gorunum, ?ac), so a refresh or a shared link shows the same thing.
 // Each section loads only its own data.
-export default async function StockPage({ searchParams }) {
-  const query = readStockQuery(await searchParams);
-  // Dates on this page ("today", price batch times) read the clock; with cacheComponents that must happen at
-  // request time, not during prerender (CLAUDE.md: io() before server code that reads time).
-  await io();
+// The screen-reader heading shows at once; everything that reads the address bar or the database streams in
+// behind <Suspense> (Next.js "uncached data outside Suspense"), so the page never waits blank.
+export default function StockPage({ searchParams }) {
   return (
     <section className="stock-page">
       {/* The design opens straight with the toolbar card; the heading stays for screen readers. */}
       <h1 className="ui-visually-hidden">Stok</h1>
-      {query.sekme === "servis" ? (
-        <>
-          <div className="stock-toolbar stock-toolbar-plain">
-            <StockSections />
-          </div>
-          <ServiceCatalog />
-        </>
-      ) : (
-        <CurrentStock query={query} />
-      )}
+      <Suspense fallback={<StockLoading />}>
+        <StockContent searchParams={searchParams} />
+      </Suspense>
     </section>
+  );
+}
+
+async function StockContent({ searchParams }) {
+  const query = readStockQuery(await searchParams);
+  // Dates on this page ("today", price batch times) read the clock; with cacheComponents that must happen at
+  // request time, not during prerender (CLAUDE.md: io() before server code that reads time).
+  await io();
+  return query.sekme === "servis" ? (
+    <>
+      <div className="stock-toolbar stock-toolbar-plain">
+        <StockSections />
+      </div>
+      <ServiceCatalog />
+    </>
+  ) : (
+    <CurrentStock query={query} />
+  );
+}
+
+function StockLoading() {
+  return (
+    <div className="stock-loading" aria-busy="true">
+      <Skeleton rows={2} label="Stok araçları yükleniyor…" />
+      <Skeleton rows={6} label="Stok listesi yükleniyor…" />
+    </div>
   );
 }
 

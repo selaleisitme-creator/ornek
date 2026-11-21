@@ -792,3 +792,4 @@ p.stock-modal-hint { margin: 0; }
 .stock-card-body .stock-card-stock { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .stock-card-body .stock-price { margin-top: 4px; color: var(--ui-ink); font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .stock-card-body .stock-row-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 8px; margin-top: 6px; }
+.stock-loading { display: grid; gap: 16px; padding: 12px; border: 1px solid #dce7ea; border-radius: 16px; background: #fff; }
