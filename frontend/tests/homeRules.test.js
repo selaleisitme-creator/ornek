@@ -3,13 +3,10 @@ import {
   FOLLOW_UPS,
   addDays,
   backupProblem,
-  bucketSales,
-  bucketVisits,
   chartScale,
-  countFirstVisitsBySource,
   daysBetween,
+  fillMonths,
   formatWelcomeClock,
-  isNewPatientVisit,
   isSgkInvoiceWindow,
   lastMonths,
   needsFollowUp,
@@ -33,56 +30,6 @@ describe("dates", () => {
   });
 });
 
-describe("bucketSales", () => {
-  const months = lastMonths("2026-11-21");
-
-  it("adds sale values by sale date and takes refunds off by refund date", () => {
-    const items = [
-      { sale_id: 1, sale_date: "2026-10-05", net_value: "1000.50" },
-      { sale_id: 1, sale_date: "2026-10-05", net_value: "200" },
-      { sale_id: 2, sale_date: "2026-11-01", net_value: "500" },
-      { sale_id: 3, sale_date: "2025-01-01", net_value: "999" },
-    ];
-    const refunds = [{ refunded_on: "2026-11-10", amount: "200" }];
-    const bars = bucketSales(months, items, refunds);
-    expect(bars.find((bar) => bar.key === "2026-10")).toMatchObject({ amount: 1200.5, count: 1 });
-    expect(bars.find((bar) => bar.key === "2026-11")).toMatchObject({ amount: 300, count: 1 });
-    expect(bars.find((bar) => bar.key === "2026-06")).toMatchObject({ amount: 0, count: 0 });
-  });
-});
-
-describe("new and returning visits", () => {
-  const months = lastMonths("2026-11-21");
-  const first = new Map([[1, "2026-11-02T10:00:00+00:00"], [2, "2026-10-01T09:00:00+00:00"]]);
-  const patients = new Map([
-    [1, { registered_on: "2026-11-01", has_past_device: false }],
-    [2, { registered_on: "2020-03-01", has_past_device: false }],
-  ]);
-
-  it("counts a first visit right after registration as new", () => {
-    expect(isNewPatientVisit({ patient_id: 1, starts_at: "2026-11-02T10:00:00+00:00" }, first.get(1), patients.get(1))).toBe(true);
-  });
-
-  it("counts a patient registered long before (typed in from before the panel) as returning", () => {
-    expect(isNewPatientVisit({ patient_id: 2, starts_at: "2026-10-01T09:00:00+00:00" }, first.get(2), patients.get(2))).toBe(false);
-  });
-
-  it("counts a patient with a past device as returning", () => {
-    expect(isNewPatientVisit({ patient_id: 1, starts_at: "2026-11-02T10:00:00+00:00" }, first.get(1), { registered_on: "2026-11-01", has_past_device: true })).toBe(false);
-  });
-
-  it("splits the months", () => {
-    const visits = [
-      { patient_id: 1, starts_at: "2026-11-02T10:00:00+00:00" },
-      { patient_id: 1, starts_at: "2026-11-20T10:00:00+00:00" },
-      { patient_id: 2, starts_at: "2026-10-01T09:00:00+00:00" },
-    ];
-    const bars = bucketVisits(months, visits, first, patients);
-    expect(bars.find((bar) => bar.key === "2026-11")).toMatchObject({ fresh: 1, returning: 1 });
-    expect(bars.find((bar) => bar.key === "2026-10")).toMatchObject({ fresh: 0, returning: 1 });
-  });
-});
-
 describe("chartScale", () => {
   it("rounds the top to readable steps", () => {
     expect(chartScale(186054).ticks).toEqual([0, 50000, 100000, 150000, 200000]);
@@ -92,13 +39,26 @@ describe("chartScale", () => {
 });
 
 describe("paymentShares", () => {
-  it("counts each patient payment once and sorts by count", () => {
-    const methods = [{ code: "cash", name: "Nakit" }, { code: "transfer", name: "Havale/EFT" }];
-    const payments = [{ payment_method: "transfer" }, { payment_method: "cash" }, { payment_method: "transfer" }];
-    expect(paymentShares(payments, methods)).toEqual([
+  it("adds whole-number percentages to the database rows", () => {
+    const rows = [
+      { code: "transfer", name: "Havale/EFT", payments: 2 },
+      { code: "cash", name: "Nakit", payments: 1 },
+    ];
+    expect(paymentShares(rows)).toEqual([
       { code: "transfer", name: "Havale/EFT", count: 2, percent: 67 },
       { code: "cash", name: "Nakit", count: 1, percent: 33 },
     ]);
+    expect(paymentShares([])).toEqual([]);
+  });
+});
+
+describe("fillMonths", () => {
+  it("places the database month rows on the chart and fills the gaps with zeros", () => {
+    const months = lastMonths("2026-11-21");
+    const rows = [{ month: "2026-10-01", amount: "1200.50" }, { month: "2025-01-01", amount: "9" }];
+    const bars = fillMonths(months, rows, (row) => ({ value: Number(row.amount) }), { value: 0 });
+    expect(bars.map((bar) => bar.value)).toEqual([0, 0, 0, 0, 1200.5, 0]);
+    expect(bars[4]).toMatchObject({ key: "2026-10", label: "Eki" });
   });
 });
 
@@ -151,24 +111,3 @@ describe("display helpers", () => {
   });
 });
 
-describe("countFirstVisitsBySource", () => {
-  const appointments = [
-    // Patient 1 came from Instagram (source 3) and then returned twice: counted once, as attended.
-    { id: 1, patient_id: 1, starts_at: "2026-09-01T10:00:00+00:00", status: "attended", referral_source_id: 3 },
-    { id: 5, patient_id: 1, starts_at: "2026-10-01T10:00:00+00:00", status: "attended", referral_source_id: 3 },
-    { id: 9, patient_id: 1, starts_at: "2026-11-01T10:00:00+00:00", status: "waiting", referral_source_id: 3 },
-    // Patient 2's first appointment has no source: the patient's own source (Google, 7) is used.
-    { id: 2, patient_id: 2, starts_at: "2026-11-02T10:00:00+00:00", status: "no_show", referral_source_id: null },
-    // Patient 3: no source anywhere, left out.
-    { id: 3, patient_id: 3, starts_at: "2026-11-03T10:00:00+00:00", status: "waiting", referral_source_id: null },
-    // Patient 4: first appointment still waiting.
-    { id: 4, patient_id: 4, starts_at: "2026-11-25T10:00:00+00:00", status: "waiting", referral_source_id: 3 },
-  ];
-
-  it("counts each patient once by the first appointment", () => {
-    const counts = countFirstVisitsBySource(appointments, new Map([[2, 7]]));
-    expect(counts.get(3)).toEqual({ total: 2, attended: 1, noShow: 0, waiting: 1 });
-    expect(counts.get(7)).toEqual({ total: 1, attended: 0, noShow: 1, waiting: 0 });
-    expect(counts.size).toBe(2);
-  });
-});

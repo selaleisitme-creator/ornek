@@ -1,5 +1,6 @@
-// Pure rules for the home page (Anasayfa): month buckets for the charts, chart scales, payment shares and
-// the date windows behind the suggestions. No database or clock access here: callers pass "today" in, so
+// Pure rules for the home page (Anasayfa): placing the database's month rows on the charts, chart scales,
+// payment shares and the date windows behind the suggestions. The totals themselves are added up in the
+// database (011_home_summaries.sql). No database or clock access here: callers pass "today" in, so
 // every rule can be tested with fixed dates.
 
 const MONTH_SHORT = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
@@ -47,56 +48,6 @@ export function chartStartDate(months) {
   return `${months[0].key}-01`;
 }
 
-// Monthly sales for the chart: sale value by sale date minus refunds by refund date (plan 3.7), and the
-// number of sales per month for people without the accounting permission. Rows outside the months are ignored.
-//   items:   [{ sale_id, sale_date, net_value }]
-//   refunds: [{ refunded_on, amount }]
-export function bucketSales(months, items, refunds) {
-  const byKey = new Map(months.map((month) => [month.key, { ...month, amount: 0, sales: new Set() }]));
-  for (const item of items) {
-    const bucket = byKey.get(monthKey(item.sale_date));
-    if (!bucket) continue;
-    bucket.amount += Number(item.net_value) || 0;
-    bucket.sales.add(item.sale_id);
-  }
-  for (const refund of refunds) {
-    const bucket = byKey.get(monthKey(refund.refunded_on));
-    if (bucket) bucket.amount -= Number(refund.amount) || 0;
-  }
-  return [...byKey.values()].map(({ sales, amount, ...month }) => ({
-    ...month,
-    amount: Math.round(amount * 100) / 100,
-    count: sales.size,
-  }));
-}
-
-// A patient's first attended visit counts as "new" only if they were registered shortly before it.
-// Patients typed in from before the panel carry an old registration date (or a past device), so their
-// first visit in the panel counts as a returning visit (plan 3.7).
-export const NEW_PATIENT_WINDOW_DAYS = 60;
-
-// Attended visits per month, split into new and returning patients.
-//   visits:     [{ patient_id, starts_at }] attended visits inside the chart months
-//   firstVisit: Map patient_id → ISO timestamp of the patient's first attended visit ever
-//   patients:   Map patient_id → { registered_on, has_past_device }
-export function bucketVisits(months, visits, firstVisit, patients) {
-  const byKey = new Map(months.map((month) => [month.key, { ...month, fresh: 0, returning: 0 }]));
-  for (const visit of visits) {
-    const bucket = byKey.get(monthKey(visit.starts_at));
-    if (!bucket) continue;
-    if (isNewPatientVisit(visit, firstVisit.get(visit.patient_id), patients.get(visit.patient_id))) bucket.fresh += 1;
-    else bucket.returning += 1;
-  }
-  return [...byKey.values()];
-}
-
-export function isNewPatientVisit(visit, firstVisitAt, patient) {
-  if (!firstVisitAt || firstVisitAt !== visit.starts_at) return false;
-  if (!patient || patient.has_past_device) return false;
-  const visitDay = String(visit.starts_at).slice(0, 10);
-  return daysBetween(patient.registered_on, visitDay) <= NEW_PATIENT_WINDOW_DAYS;
-}
-
 // Rounds the largest bar up to a readable axis top with four equal steps (0, 50, 100, 150, 200).
 export function chartScale(maxValue) {
   if (!(maxValue > 0)) return { max: 4, ticks: [0, 1, 2, 3, 4] };
@@ -117,17 +68,26 @@ export function formatWholeMoney(value) {
   return `${new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 }).format(Math.round(value))} TL`;
 }
 
-// Payment methods by number of patient payments (each part of a split payment counts once; SGK money is
-// not a method the patient chose). Largest first; percentages are whole numbers of the total count.
-//   payments: [{ payment_method }]   methods: [{ code, name }]
-export function paymentShares(payments, methods) {
-  const names = new Map(methods.map((method) => [method.code, method.name]));
-  const counts = new Map();
-  for (const payment of payments) counts.set(payment.payment_method, (counts.get(payment.payment_method) ?? 0) + 1);
-  const total = payments.length;
-  return [...counts.entries()]
-    .map(([code, count]) => ({ code, name: names.get(code) ?? code, count, percent: total ? Math.round((count / total) * 100) : 0 }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "tr"));
+// Month rows from the database ({ month: "2026-10-01", … }) placed on the chart's months; a month with no row
+// is zero. pick(row) gives the bar's values; empty() the zeros for a missing month.
+export function fillMonths(months, rows, pick, empty) {
+  const byKey = new Map(rows.map((row) => [monthKey(row.month), row]));
+  return months.map((month) => {
+    const row = byKey.get(month.key);
+    return { ...month, ...(row ? pick(row) : empty) };
+  });
+}
+
+// Payment method rows from the database ({ code, name, payments }, largest first) with whole-number
+// percentages of the total count. Each patient payment counts once; SGK money is not counted (plan 3.7).
+export function paymentShares(rows) {
+  const total = rows.reduce((sum, row) => sum + row.payments, 0);
+  return rows.map((row) => ({
+    code: row.code,
+    name: row.name,
+    count: row.payments,
+    percent: total ? Math.round((row.payments / total) * 100) : 0,
+  }));
 }
 
 // SGK invoices are cut in the last 7 or the first 7 days of the month (plan 3.7).
@@ -180,37 +140,6 @@ export function formatWelcomeClock(date) {
   const pick = (type) => day.find((part) => part.type === type)?.value ?? "";
   const time = new Intl.DateTimeFormat("tr-TR", { timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).format(date);
   return `${pick("day")} ${pick("month")} ${pick("year")} ${pick("weekday")} · ${time}`;
-}
-
-// "Randevu kaynakları": where new patients came from. Each patient counts once, by their first appointment
-// that was not cancelled; its status says whether that first visit happened. The source is the one on that
-// appointment, or the patient's own source when the appointment has none (plan 3.7, decided 2026-11-21:
-// the table answers "where did my patients come from", so repeat visits must not inflate a channel).
-//   appointments:   [{ id, patient_id, starts_at, status, referral_source_id }] (cancelled ones left out)
-//   patientSources: Map patient_id → referral_source_id
-// Returns Map source_id → { total, attended, noShow, waiting }.
-export function countFirstVisitsBySource(appointments, patientSources) {
-  const first = new Map();
-  for (const appointment of appointments) {
-    const known = first.get(appointment.patient_id);
-    const earlier =
-      !known ||
-      appointment.starts_at < known.starts_at ||
-      (appointment.starts_at === known.starts_at && appointment.id < known.id);
-    if (earlier) first.set(appointment.patient_id, appointment);
-  }
-  const counts = new Map();
-  for (const appointment of first.values()) {
-    const sourceId = appointment.referral_source_id ?? patientSources.get(appointment.patient_id) ?? null;
-    if (sourceId === null) continue;
-    const row = counts.get(sourceId) ?? { total: 0, attended: 0, noShow: 0, waiting: 0 };
-    row.total += 1;
-    if (appointment.status === "attended") row.attended += 1;
-    else if (appointment.status === "no_show") row.noShow += 1;
-    else if (appointment.status === "waiting") row.waiting += 1;
-    counts.set(sourceId, row);
-  }
-  return counts;
 }
 
 // Known referral sources get the design's brand mark; anything else a neutral arrow.

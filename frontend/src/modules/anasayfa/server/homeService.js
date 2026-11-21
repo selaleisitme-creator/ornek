@@ -7,10 +7,9 @@ import {
   FOLLOW_UPS,
   addDays,
   backupProblem,
-  bucketSales,
-  bucketVisits,
-  countFirstVisitsBySource,
+  chartStartDate,
   daysBetween,
+  fillMonths,
   isSgkInvoiceWindow,
   lastMonths,
   needsFollowUp,
@@ -19,8 +18,8 @@ import {
   warrantyState,
 } from "../homeRules";
 
-// Shapes the home page: three charts, the suggestions and the referral table. Everything is computed here
-// on the server; the page receives only the results. People without the accounting permission never get
+// Shapes the home page: three charts, the suggestions and the referral table. The totals are added up in the
+// database (011_home_summaries.sql); the page receives only the results. People without the accounting permission never get
 // money totals: the sales chart switches to sale counts and the pending SGK suggestion is left out
 // (plan 3.7, home question 2).
 
@@ -46,48 +45,35 @@ export async function getHomeView({ canSeeMoney, now = new Date() }) {
 }
 
 async function getSalesChart(months, canSeeMoney) {
-  const [items, refunds] = await Promise.all([repo.listSaleItemValues(null), repo.listRefundAmounts(null)]);
-  const bars = bucketSales(months, items, refunds);
+  const [rows, total] = await Promise.all([repo.salesByMonth(chartStartDate(months)), repo.salesTotal()]);
   if (!canSeeMoney) {
     return {
       mode: "count",
-      bars: bars.map(({ key, label, count }) => ({ key, label, value: count })),
-      total: new Set(items.map((item) => item.sale_id)).size,
+      bars: fillMonths(months, rows, (row) => ({ value: row.sale_count }), { value: 0 }),
+      total: total.sale_count,
     };
   }
-  const allTime =
-    items.reduce((sum, item) => sum + (Number(item.net_value) || 0), 0) -
-    refunds.reduce((sum, refund) => sum + (Number(refund.amount) || 0), 0);
   return {
     mode: "money",
-    bars: bars.map(({ key, label, amount }) => ({ key, label, value: amount })),
-    total: Math.round(allTime * 100) / 100,
+    bars: fillMonths(months, rows, (row) => ({ value: Number(row.amount) || 0 }), { value: 0 }),
+    total: Number(total.amount) || 0,
   };
 }
 
 async function getVisitsChart(months) {
-  const visits = await repo.listAttendedVisits();
-  const firstVisit = new Map();
-  for (const visit of visits) {
-    const known = firstVisit.get(visit.patient_id);
-    if (!known || visit.starts_at < known) firstVisit.set(visit.patient_id, visit.starts_at);
-  }
-  const patientIds = [...firstVisit.keys()];
-  const [patients, legacy] = await Promise.all([
-    repo.listPatientsBrief(patientIds),
-    repo.listPatientsWithPastDevice(patientIds),
-  ]);
-  const withPastDevice = new Set(legacy.map((row) => row.patient_id));
-  const patientInfo = new Map(
-    patients.map((patient) => [patient.id, { registered_on: patient.registered_on, has_past_device: withPastDevice.has(patient.id) }])
+  const rows = await repo.visitsByMonth(chartStartDate(months));
+  return fillMonths(
+    months,
+    rows,
+    (row) => ({ fresh: row.new_patients, returning: row.returning_patients }),
+    { fresh: 0, returning: 0 }
   );
-  const inRange = visits.filter((visit) => String(visit.starts_at) >= `${months[0].key}-01`);
-  return bucketVisits(months, inRange, firstVisit, patientInfo);
 }
 
 async function getPaymentChart() {
-  const [payments, methods] = await Promise.all([repo.listPatientPaymentMethods(), repo.listPaymentMethods()]);
-  return { total: payments.length, rows: paymentShares(payments, methods) };
+  const rows = await repo.paymentMethodCounts();
+  const shares = paymentShares(rows);
+  return { total: shares.reduce((sum, row) => sum + row.count, 0), rows: shares };
 }
 
 // ---- Suggestions ----------------------------------------------------------------------------------------
@@ -361,12 +347,10 @@ function invoiceLinks(links) {
 // ---- Referral sources -----------------------------------------------------------------------------------
 
 async function getReferralTable() {
-  const [sources, appointments] = await Promise.all([repo.listReferralSources(), repo.listAppointmentSources()]);
-  const patientIds = [...new Set(appointments.map((appointment) => appointment.patient_id))];
-  const patientSources = new Map(
-    (await repo.listPatientSources(patientIds)).map((patient) => [patient.id, patient.referral_source_id])
+  const [sources, countRows] = await Promise.all([repo.listReferralSources(), repo.referralCounts()]);
+  const counts = new Map(
+    countRows.map((row) => [row.source_id, { total: row.total, attended: row.attended, noShow: row.no_show, waiting: row.waiting }])
   );
-  const counts = countFirstVisitsBySource(appointments, patientSources);
   const empty = { total: 0, attended: 0, noShow: 0, waiting: 0 };
   const rows = sources.map((source) => ({
     id: source.id,

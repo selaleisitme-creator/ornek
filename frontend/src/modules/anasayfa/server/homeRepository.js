@@ -2,42 +2,12 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
 // Home page reads, made as the signed-in user so RLS decides what comes back. One query per function;
-// homeService puts them together. Lists that can grow (sale items, visits, payments) are read in pages,
-// because the API returns at most 1000 rows per request.
-
-const PAGE_SIZE = 1000;
+// homeService puts them together. The chart and table totals come from the database functions of
+// 011_home_summaries.sql, so only their few result rows travel, however many records the clinic has.
 
 function check({ data, error, count }) {
   if (error) throw error;
   return count ?? data ?? [];
-}
-
-async function readAll(build) {
-  const rows = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const page = check(await build().range(from, from + PAGE_SIZE - 1));
-    rows.push(...page);
-    if (page.length < PAGE_SIZE) return rows;
-  }
-}
-
-// Sale items from the sale report (legacy sales are already left out by the view).
-export async function listSaleItemValues(fromDate) {
-  const supabase = await createClient();
-  return readAll(() => {
-    let query = supabase.from("sale_report").select("sale_item_id, sale_id, sale_date, net_value");
-    if (fromDate) query = query.gte("sale_date", fromDate);
-    return query.order("sale_item_id");
-  });
-}
-
-export async function listRefundAmounts(fromDate) {
-  const supabase = await createClient();
-  return readAll(() => {
-    let query = supabase.from("refunds").select("id, refunded_on, amount");
-    if (fromDate) query = query.gte("refunded_on", fromDate);
-    return query.order("id");
-  });
 }
 
 // Newest sold items first, for the "Satılan ürünler" window.
@@ -50,15 +20,6 @@ export async function listSoldItems(limit) {
       .order("sale_date", { ascending: false })
       .order("sale_item_id", { ascending: false })
       .limit(limit)
-  );
-}
-
-// Every attended visit (patient and time). Small for a single clinic; the service finds each patient's
-// first visit from it.
-export async function listAttendedVisits() {
-  const supabase = await createClient();
-  return readAll(() =>
-    supabase.from("appointments").select("id, patient_id, starts_at").eq("status", "attended").order("id")
   );
 }
 
@@ -75,31 +36,18 @@ export async function listArrivedVisits(limit) {
   );
 }
 
-export async function listPatientsBrief(patientIds) {
-  if (!patientIds.length) return [];
+// ---- Chart and table totals (011_home_summaries.sql) ----------------------------------------------------
+
+async function rpc(name, args) {
   const supabase = await createClient();
-  return check(await supabase.from("patients").select("id, registered_on").in("id", patientIds));
+  return check(await supabase.rpc(name, args));
 }
 
-// Patients who have a sale marked as a past ("legacy") device sale.
-export async function listPatientsWithPastDevice(patientIds) {
-  if (!patientIds.length) return [];
-  const supabase = await createClient();
-  return check(
-    await supabase.from("sales").select("patient_id").eq("sale_kind", "legacy").in("patient_id", patientIds)
-  );
-}
-
-// Patient payments (not SGK) and their method; one row per payment.
-export async function listPatientPaymentMethods() {
-  const supabase = await createClient();
-  return readAll(() => supabase.from("sale_payments").select("id, payment_method").eq("payer", "patient").order("id"));
-}
-
-export async function listPaymentMethods() {
-  const supabase = await createClient();
-  return check(await supabase.from("payment_methods").select("code, name").order("sort_order"));
-}
+export const salesByMonth = (fromDate) => rpc("home_sales_monthly", { p_from: fromDate });
+export const salesTotal = async () => (await rpc("home_sales_total"))[0] ?? { amount: 0, sale_count: 0 };
+export const visitsByMonth = (fromDate) => rpc("home_visits_monthly", { p_from: fromDate });
+export const paymentMethodCounts = () => rpc("home_payment_methods");
+export const referralCounts = () => rpc("home_referral_counts");
 
 // ---- Suggestions ----------------------------------------------------------------------------------------
 
@@ -227,39 +175,6 @@ export async function listReferralSources() {
   return check(
     await supabase.from("referral_sources").select("id, name, visible").eq("active", true).order("sort_order").order("id")
   );
-}
-
-// Every appointment that was not cancelled, with its patient and time, so the service can find each
-// patient's first one.
-export async function listAppointmentSources() {
-  const supabase = await createClient();
-  return readAll(() =>
-    supabase
-      .from("appointments")
-      .select("id, patient_id, starts_at, referral_source_id, status")
-      .neq("status", "cancelled")
-      .order("id")
-  );
-}
-
-// The source written on each patient ("Bizi nereden duydunuz?"), used when the first appointment has none.
-export async function listPatientSources(patientIds) {
-  if (!patientIds.length) return [];
-  const supabase = await createClient();
-  const rows = [];
-  // Long id lists go in chunks so the request address stays short.
-  for (let start = 0; start < patientIds.length; start += 200) {
-    rows.push(
-      ...check(
-        await supabase
-          .from("patients")
-          .select("id, referral_source_id")
-          .in("id", patientIds.slice(start, start + 200))
-          .not("referral_source_id", "is", null)
-      )
-    );
-  }
-  return rows;
 }
 
 export async function updateReferralSource(id, fields) {
