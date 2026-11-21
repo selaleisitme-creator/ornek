@@ -1,302 +1,377 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useToast } from "@/modules/shared/ui/Toast";
+import Modal from "@/modules/shared/ui/Modal";
+import {
+  createAppointmentRequest,
+  listAppointmentRequests,
+  setAppointmentRequestStatus,
+} from "@/modules/randevular/server/appointmentActions";
+import "./appointments.css";
 
-const initialAppointments = [
-  {
-    id: 1,
-    full_name: "Ahmet Yılmaz",
-    phone: "0555 123 45 67",
-    email: "ahmet@example.com",
-    appointment_date: "2026-11-20",
-    appointment_time: "10:30",
-    issue: "İşitme testi",
-    status: "new",
-  },
-  {
-    id: 2,
-    full_name: "Ayşe Demir",
-    phone: "0532 456 78 90",
-    email: "ayse@example.com",
-    appointment_date: "2026-11-20",
-    appointment_time: "14:00",
-    issue: "İşitme cihazı danışmanlığı",
-    status: "converted",
-  },
-];
-
-const statusLabels = {
-  new: "Yeni",
-  converted: "Onaylandı",
-  rejected: "Reddedildi",
+const STATUS = {
+  new: { label: "Yeni talep", className: "ui-badge-info" },
+  converted: { label: "Onaylandı", className: "ui-badge-ok" },
+  rejected: { label: "Reddedildi", className: "ui-badge-danger" },
 };
 
+function todayString() {
+  const date = new Date();
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function displayDate(value) {
+  if (!value) return "—";
+  const [y, m, d] = value.slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return value;
+  return new Date(y, m - 1, d).toLocaleDateString("tr-TR", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function isPastRequest(request) {
+  if (!request.appointment_date) return false;
+
+  const now = new Date();
+  const dateParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Istanbul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const year = dateParts.find((part) => part.type === "year")?.value;
+  const month = dateParts.find((part) => part.type === "month")?.value;
+  const day = dateParts.find((part) => part.type === "day")?.value;
+  const today = `${year}-${month}-${day}`;
+
+  if (request.appointment_date < today) return true;
+  if (request.appointment_date > today) return false;
+
+  const timeMatch = /^([01]\d|2[0-3]):([0-5]\d)/.exec(request.appointment_time || "");
+  if (!timeMatch) return false;
+
+  const timeParts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Istanbul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const hour = Number(timeParts.find((part) => part.type === "hour")?.value || "0");
+  const minute = Number(timeParts.find((part) => part.type === "minute")?.value || "0");
+  const appointmentMinutes = Number(timeMatch[1]) * 60 + Number(timeMatch[2]);
+  return appointmentMinutes < hour * 60 + minute;
+}
+
+function requestStatus(request) {
+  return ["new", "converted", "rejected"].includes(request?.status)
+    ? request.status
+    : "new";
+}
+
 export default function AppointmentsPage() {
-  const [appointments, setAppointments] = useState(initialAppointments);
+  const toast = useToast();
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [activeSection, setActiveSection] = useState("active");
   const [showForm, setShowForm] = useState(false);
-
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     full_name: "",
     phone: "",
     email: "",
-    appointment_date: "",
-    appointment_time: "",
+    appointment_date: todayString(),
+    appointment_time: "10:00",
     issue: "",
   });
 
-  const filteredAppointments = useMemo(() => {
-    return appointments.filter((appointment) => {
-      const matchesSearch =
-        appointment.full_name.toLowerCase().includes(search.toLowerCase()) ||
-        appointment.phone.includes(search);
+  const loadRequests = useCallback(async () => {
+    setLoading(true);
+    const result = await listAppointmentRequests();
 
-      const matchesFilter =
-        filter === "all" || appointment.status === filter;
+    if (!result.ok) {
+      toast(result.error || "Randevu taleplerini yüklenemedi.", "error");
+      setRequests([]);
+    } else {
+      setRequests(result.data || []);
+    }
+    setLoading(false);
+  }, [toast]);
 
-      return matchesSearch && matchesFilter;
+  useEffect(() => {
+    const timer = window.setTimeout(() => loadRequests(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadRequests]);
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase("tr-TR");
+    return requests.filter((request) => {
+      const status = requestStatus(request);
+      const matchesSection =
+        activeSection === "past"
+          ? isPastRequest(request)
+          : !isPastRequest(request);
+      const matchesFilter = filter === "all" || status === filter;
+      const haystack = [
+        request.full_name,
+        request.phone,
+        request.email,
+        request.issue,
+      ].join(" ").toLocaleLowerCase("tr-TR");
+      return matchesSection && matchesFilter && (!query || haystack.includes(query));
     });
-  }, [appointments, search, filter]);
+  }, [requests, search, filter, activeSection]);
 
-  function addAppointment(e) {
-    e.preventDefault();
+  const sectionRequests = useMemo(
+    () => requests.filter((request) => (
+      activeSection === "past" ? isPastRequest(request) : !isPastRequest(request)
+    )),
+    [requests, activeSection]
+  );
 
-    const newAppointment = {
-      ...form,
-      id: Date.now(),
-      status: "new",
-    };
+  const counts = useMemo(() => ({
+    all: sectionRequests.length,
+    new: sectionRequests.filter((item) => requestStatus(item) === "new").length,
+    converted: sectionRequests.filter((item) => requestStatus(item) === "converted").length,
+    rejected: sectionRequests.filter((item) => requestStatus(item) === "rejected").length,
+  }), [sectionRequests]);
 
-    setAppointments((previous) => [newAppointment, ...previous]);
+  async function addRequest(event) {
+    event.preventDefault();
+    setSaving(true);
 
-    setForm({
-      full_name: "",
-      phone: "",
-      email: "",
-      appointment_date: "",
-      appointment_time: "",
-      issue: "",
+    const result = await createAppointmentRequest({
+      full_name: form.full_name,
+      phone: form.phone,
+      email: form.email,
+      appointment_date: form.appointment_date,
+      appointment_time: form.appointment_time,
+      issue: form.issue,
     });
 
-    setShowForm(false);
+    if (!result.ok) {
+      toast(result.error || "Randevu oluşturulamadı.", "error");
+    } else {
+      toast("Randevu talebi oluşturuldu.");
+      setForm({
+        full_name: "",
+        phone: "",
+        email: "",
+        appointment_date: todayString(),
+        appointment_time: "10:00",
+        issue: "",
+      });
+      setShowForm(false);
+      loadRequests();
+    }
+    setSaving(false);
   }
 
-  function updateStatus(id, status) {
-    setAppointments((previous) =>
-      previous.map((appointment) =>
-        appointment.id === id
-          ? { ...appointment, status }
-          : appointment
-      )
-    );
-  }
+  async function updateStatus(id, status) {
+    const result = await setAppointmentRequestStatus(id, status);
 
-  const newCount = appointments.filter((a) => a.status === "new").length;
-  const approvedCount = appointments.filter(
-    (a) => a.status === "converted"
-  ).length;
-  const rejectedCount = appointments.filter(
-    (a) => a.status === "rejected"
-  ).length;
+    if (!result.ok) {
+      toast(result.error || "Durum güncellenemedi.", "error");
+      return;
+    }
+
+    setRequests((items) => items.map((item) => (
+      item.id === id ? { ...item, status } : item
+    )));
+    toast(status === "converted" ? "Randevu onaylandı." : "Randevu durumu güncellendi.");
+  }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <section className="appointments-page">
+      <header className="appointments-head">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Randevular</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Randevu taleplerini yönetin ve takip edin.
-          </p>
+          <p className="ui-eyebrow">Şelale İşitme · Hasta yönetimi</p>
+          <h1>Randevular</h1>
+          <p>Web taleplerini inceleyin, onaylayın veya reddedin.</p>
+        </div>
+        <button className="ui-button ui-button-primary" type="button" onClick={() => setShowForm(true)}>
+          <span aria-hidden="true">+</span> Yeni randevu
+        </button>
+      </header>
+
+      <div className="appointments-stats">
+        <StatCard title="Toplam talep" value={counts.all} kind="all" />
+        <StatCard title="Yeni" value={counts.new} kind="new" />
+        <StatCard title="Onaylanan" value={counts.converted} kind="converted" />
+        <StatCard title="Reddedilen" value={counts.rejected} kind="rejected" />
+      </div>
+
+      <div className="appointments-toolbar">
+        <div className="ui-chips" aria-label="Randevu dönemi">
+          <button
+            type="button"
+            className={`ui-tab ${activeSection === "active" ? "on" : ""}`}
+            onClick={() => setActiveSection("active")}
+            aria-pressed={activeSection === "active"}
+          >
+            Güncel randevular
+            <span className="ui-tab-count">{requests.filter((item) => !isPastRequest(item)).length}</span>
+          </button>
+          <button
+            type="button"
+            className={`ui-tab ${activeSection === "past" ? "on" : ""}`}
+            onClick={() => setActiveSection("past")}
+            aria-pressed={activeSection === "past"}
+          >
+            Geçmiş randevular
+            <span className="ui-tab-count">{requests.filter((item) => isPastRequest(item)).length}</span>
+          </button>
         </div>
 
-        <button
-          onClick={() => setShowForm(true)}
-          className="rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
-        >
-          + Yeni Randevu
-        </button>
+        <div className="ui-chips" aria-label="Randevu filtresi">
+          {[
+            ["all", "Tümü"],
+            ["new", "Yeni"],
+            ["converted", "Onaylanan"],
+            ["rejected", "Reddedilen"],
+          ].map(([key, label]) => (
+            <button
+              type="button"
+              key={key}
+              className={`ui-tab ${filter === key ? "on" : ""}`}
+              onClick={() => setFilter(key)}
+              aria-pressed={filter === key}
+            >
+              {label}
+              <span className="ui-tab-count">{counts[key]}</span>
+            </button>
+          ))}
+        </div>
+
+        <label className="appointments-search ui-field">
+          <span className="ui-visually-hidden">Randevu ara</span>
+          <input
+            className="ui-input"
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Ad, telefon, konu ara..."
+          />
+        </label>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard title="Yeni Talepler" value={newCount} />
-        <StatCard title="Onaylananlar" value={approvedCount} />
-        <StatCard title="Reddedilenler" value={rejectedCount} />
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <input
-          type="text"
-          placeholder="İsim veya telefon ile ara..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="min-w-[220px] flex-1 rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-blue-500"
-        />
-
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="rounded-lg border border-gray-300 px-4 py-3 text-sm"
-        >
-          <option value="all">Tüm Randevular</option>
-          <option value="new">Yeni</option>
-          <option value="converted">Onaylandı</option>
-          <option value="rejected">Reddedildi</option>
-        </select>
-      </div>
-
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-600">
-            <tr>
-              <th className="p-4">Müşteri</th>
-              <th className="p-4">Telefon</th>
-              <th className="p-4">Tarih</th>
-              <th className="p-4">Saat</th>
-              <th className="p-4">Konu</th>
-              <th className="p-4">Durum</th>
-              <th className="p-4">İşlem</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filteredAppointments.map((appointment) => (
-              <tr key={appointment.id} className="border-t border-gray-100">
-                <td className="p-4 font-medium text-gray-900">
-                  {appointment.full_name}
-                </td>
-                <td className="p-4 text-gray-600">{appointment.phone}</td>
-                <td className="p-4 text-gray-600">
-                  {appointment.appointment_date}
-                </td>
-                <td className="p-4 text-gray-600">
-                  {appointment.appointment_time}
-                </td>
-                <td className="p-4 text-gray-600">{appointment.issue}</td>
-                <td className="p-4">
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-                    {statusLabels[appointment.status]}
-                  </span>
-                </td>
-                <td className="p-4">
-                  <select
-                    value={appointment.status}
-                    onChange={(e) =>
-                      updateStatus(appointment.id, e.target.value)
-                    }
-                    className="rounded-md border border-gray-300 p-2 text-xs"
-                  >
-                    <option value="new">Yeni</option>
-                    <option value="converted">Onayla</option>
-                    <option value="rejected">Reddet</option>
-                  </select>
-                </td>
-              </tr>
-            ))}
-
-            {filteredAppointments.length === 0 && (
+      {loading ? (
+        <div className="ui-skeleton" aria-label="Randevular yükleniyor">
+          <div className="ui-skeleton-row" />
+          <div className="ui-skeleton-row" />
+          <div className="ui-skeleton-row" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="ui-empty">
+          <h2>Randevu bulunamadı</h2>
+          <p>Arama ve durum filtrelerine uygun talep yok.</p>
+          <button className="ui-button ui-button-primary ui-empty-action" type="button" onClick={() => setShowForm(true)}>
+            Yeni randevu oluştur
+          </button>
+        </div>
+      ) : (
+        <div className="ui-table-wrap">
+          <table className="ui-table appointments-table">
+            <thead>
               <tr>
-                <td colSpan="7" className="p-8 text-center text-gray-500">
-                  Randevu bulunamadı.
-                </td>
+                <th>Müşteri</th>
+                <th>İletişim</th>
+                <th>Tarih</th>
+                <th>Saat</th>
+                <th>Konu</th>
+                <th>Durum</th>
+                <th className="ui-end">İşlem</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <form
-            onSubmit={addAppointment}
-            className="w-full max-w-lg space-y-4 rounded-xl bg-white p-6"
-          >
-            <h2 className="text-xl font-bold text-gray-900">
-              Yeni Randevu Oluştur
-            </h2>
-
-            <input
-              required
-              placeholder="Ad Soyad"
-              value={form.full_name}
-              onChange={(e) =>
-                setForm({ ...form, full_name: e.target.value })
-              }
-              className="w-full rounded-lg border p-3"
-            />
-
-            <input
-              required
-              placeholder="Telefon"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="w-full rounded-lg border p-3"
-            />
-
-            <input
-              type="email"
-              placeholder="E-posta"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full rounded-lg border p-3"
-            />
-
-            <input
-              required
-              type="date"
-              value={form.appointment_date}
-              onChange={(e) =>
-                setForm({ ...form, appointment_date: e.target.value })
-              }
-              className="w-full rounded-lg border p-3"
-            />
-
-            <input
-              required
-              type="time"
-              value={form.appointment_time}
-              onChange={(e) =>
-                setForm({ ...form, appointment_time: e.target.value })
-              }
-              className="w-full rounded-lg border p-3"
-            />
-
-            <input
-              required
-              placeholder="Randevu konusu"
-              value={form.issue}
-              onChange={(e) => setForm({ ...form, issue: e.target.value })}
-              className="w-full rounded-lg border p-3"
-            />
-
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="rounded-lg border px-4 py-2"
-              >
-                İptal
-              </button>
-
-              <button
-                type="submit"
-                className="rounded-lg bg-blue-600 px-4 py-2 text-white"
-              >
-                Kaydet
-              </button>
-            </div>
-          </form>
+            </thead>
+            <tbody>
+              {filtered.map((request) => {
+                const normalizedStatus = requestStatus(request);
+                const status = STATUS[normalizedStatus];
+                return (
+                  <tr key={request.id}>
+                    <td data-label="Müşteri"><strong>{request.full_name}</strong></td>
+                    <td data-label="İletişim">
+                      <span className="appointments-phone">{request.phone}</span>
+                      {request.email && <span className="appointments-email">{request.email}</span>}
+                    </td>
+                    <td data-label="Tarih">{displayDate(request.appointment_date)}</td>
+                    <td data-label="Saat">{request.appointment_time || "—"}</td>
+                    <td data-label="Konu">{request.issue || "Belirtilmedi"}</td>
+                    <td data-label="Durum"><span className={`ui-badge ${status.className}`}>{status.label}</span></td>
+                    <td data-label="İşlem" className="ui-end">
+                      <div className="appointments-actions">
+                        <button className="ui-button ui-button-primary" type="button" onClick={() => updateStatus(request.id, "converted")}>Onayla</button>
+                        <button className="ui-button ui-button-ghost" type="button" onClick={() => updateStatus(request.id, "rejected")}>Reddet</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
-    </div>
+
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title="Randevu oluştur"
+        eyebrow="Yeni kayıt"
+        size="lg"
+        footer={
+          <>
+            <button className="ui-button ui-button-ghost" type="button" onClick={() => setShowForm(false)}>Vazgeç</button>
+            <button className="ui-button ui-button-primary" type="submit" form="appointments-create-form" disabled={saving}>
+              {saving ? "Kaydediliyor…" : "Kaydet"}
+            </button>
+          </>
+        }
+      >
+        <form id="appointments-create-form" onSubmit={addRequest}>
+          <div className="appointments-form-grid">
+                <label className="ui-field">
+                  <span className="ui-label">Ad soyad</span>
+                  <input className="ui-input" required value={form.full_name} onChange={(event) => setForm({ ...form, full_name: event.target.value })} />
+                </label>
+                <label className="ui-field">
+                  <span className="ui-label">Telefon</span>
+                  <input className="ui-input" required value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
+                </label>
+                <label className="ui-field">
+                  <span className="ui-label">E-posta</span>
+                  <input className="ui-input" type="email" required value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+                </label>
+                <label className="ui-field">
+                  <span className="ui-label">Tarih</span>
+                  <input className="ui-input" type="date" required value={form.appointment_date} onChange={(event) => setForm({ ...form, appointment_date: event.target.value })} />
+                </label>
+                <label className="ui-field">
+                  <span className="ui-label">Saat</span>
+                  <input className="ui-input" type="time" required value={form.appointment_time} onChange={(event) => setForm({ ...form, appointment_time: event.target.value })} />
+                </label>
+                <label className="ui-field appointments-form-wide">
+                  <span className="ui-label">Randevu konusu</span>
+                  <input className="ui-input" required value={form.issue} onChange={(event) => setForm({ ...form, issue: event.target.value })} />
+                </label>
+          </div>
+        </form>
+      </Modal>
+    </section>
   );
 }
 
-function StatCard({ title, value }) {
+function StatCard({ title, value, kind }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <p className="text-sm text-gray-500">{title}</p>
-      <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
+    <div className={`appointments-stat appointments-stat-${kind}`}>
+      <span>{title}</span>
+      <strong>{value}</strong>
     </div>
   );
 }
