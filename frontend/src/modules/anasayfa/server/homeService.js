@@ -13,6 +13,7 @@ import {
   daysBetween,
   fillMonths,
   isSgkInvoiceWindow,
+  isTrackingExempt,
   lastMonths,
   needsFollowUp,
   paymentShares,
@@ -87,7 +88,7 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
     warrantyFrom: addDays(today, -60),
     warrantyTo: addDays(today, 45),
   };
-  const [maintenance, candidates, stock, webRequests, unmarked, tracking, backupSettings, lastRun, lastSuccess, links, sgk] =
+  const [maintenance, candidates, stock, webRequests, unmarked, trackingRows, backupSettings, lastRun, lastSuccess, links, sgk] =
     await Promise.all([
       repo.listMaintenanceDue(),
       repo.listFollowUpCandidates(followWindow),
@@ -167,6 +168,7 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
     });
   }
 
+  const tracking = trackingRows.filter((unit) => !isTrackingExempt(unit.products?.brands?.name));
   if (tracking.length) {
     list.push({
       id: "tracking",
@@ -181,7 +183,7 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
           return `${unit.products?.brands?.name ?? ""} ${unit.products?.name ?? ""}${unit.serial_no ? ` · ${unit.serial_no}` : ""}: ${missing}`;
         })
         .join(" · ") + (tracking.length > 3 ? ` · +${tracking.length - 3} ürün` : ""),
-      rule: "Koşul: Satılan cihaz ya da şarj cihazında üretim tarihi veya WSA kodu boş.",
+      rule: "Koşul: Satılan cihaz ya da şarj cihazında üretim tarihi veya WSA kodu boş (Coselgi hariç).",
       action: { href: "/stok", label: "Stoğu aç →" },
     });
   }
