@@ -6,6 +6,7 @@ import {
   bucketSales,
   bucketVisits,
   chartScale,
+  countFirstVisitsBySource,
   daysBetween,
   formatWelcomeClock,
   isNewPatientVisit,
@@ -147,5 +148,27 @@ describe("display helpers", () => {
     expect(referralIcon("Instagram")).toEqual({ tone: "instagram", mark: "◎" });
     expect(referralIcon("Web sitesi").tone).toBe("website");
     expect(referralIcon("Komşu").tone).toBe("generic");
+  });
+});
+
+describe("countFirstVisitsBySource", () => {
+  const appointments = [
+    // Patient 1 came from Instagram (source 3) and then returned twice: counted once, as attended.
+    { id: 1, patient_id: 1, starts_at: "2026-09-01T10:00:00+00:00", status: "attended", referral_source_id: 3 },
+    { id: 5, patient_id: 1, starts_at: "2026-10-01T10:00:00+00:00", status: "attended", referral_source_id: 3 },
+    { id: 9, patient_id: 1, starts_at: "2026-11-01T10:00:00+00:00", status: "waiting", referral_source_id: 3 },
+    // Patient 2's first appointment has no source: the patient's own source (Google, 7) is used.
+    { id: 2, patient_id: 2, starts_at: "2026-11-02T10:00:00+00:00", status: "no_show", referral_source_id: null },
+    // Patient 3: no source anywhere, left out.
+    { id: 3, patient_id: 3, starts_at: "2026-11-03T10:00:00+00:00", status: "waiting", referral_source_id: null },
+    // Patient 4: first appointment still waiting.
+    { id: 4, patient_id: 4, starts_at: "2026-11-25T10:00:00+00:00", status: "waiting", referral_source_id: 3 },
+  ];
+
+  it("counts each patient once by the first appointment", () => {
+    const counts = countFirstVisitsBySource(appointments, new Map([[2, 7]]));
+    expect(counts.get(3)).toEqual({ total: 2, attended: 1, noShow: 0, waiting: 1 });
+    expect(counts.get(7)).toEqual({ total: 1, attended: 0, noShow: 1, waiting: 0 });
+    expect(counts.size).toBe(2);
   });
 });

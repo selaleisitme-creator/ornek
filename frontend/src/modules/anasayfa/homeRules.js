@@ -182,6 +182,37 @@ export function formatWelcomeClock(date) {
   return `${pick("day")} ${pick("month")} ${pick("year")} ${pick("weekday")} · ${time}`;
 }
 
+// "Randevu kaynakları": where new patients came from. Each patient counts once, by their first appointment
+// that was not cancelled; its status says whether that first visit happened. The source is the one on that
+// appointment, or the patient's own source when the appointment has none (plan 3.7, decided 2026-11-21:
+// the table answers "where did my patients come from", so repeat visits must not inflate a channel).
+//   appointments:   [{ id, patient_id, starts_at, status, referral_source_id }] (cancelled ones left out)
+//   patientSources: Map patient_id → referral_source_id
+// Returns Map source_id → { total, attended, noShow, waiting }.
+export function countFirstVisitsBySource(appointments, patientSources) {
+  const first = new Map();
+  for (const appointment of appointments) {
+    const known = first.get(appointment.patient_id);
+    const earlier =
+      !known ||
+      appointment.starts_at < known.starts_at ||
+      (appointment.starts_at === known.starts_at && appointment.id < known.id);
+    if (earlier) first.set(appointment.patient_id, appointment);
+  }
+  const counts = new Map();
+  for (const appointment of first.values()) {
+    const sourceId = appointment.referral_source_id ?? patientSources.get(appointment.patient_id) ?? null;
+    if (sourceId === null) continue;
+    const row = counts.get(sourceId) ?? { total: 0, attended: 0, noShow: 0, waiting: 0 };
+    row.total += 1;
+    if (appointment.status === "attended") row.attended += 1;
+    else if (appointment.status === "no_show") row.noShow += 1;
+    else if (appointment.status === "waiting") row.waiting += 1;
+    counts.set(sourceId, row);
+  }
+  return counts;
+}
+
 // Known referral sources get the design's brand mark; anything else a neutral arrow.
 const SOURCE_ICONS = [
   [/instagram/i, "instagram", "◎"],

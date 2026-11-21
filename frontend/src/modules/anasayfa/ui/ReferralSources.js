@@ -1,6 +1,7 @@
 import ReferralSourcePicker from "./ReferralSourcePicker";
 
-// "Randevu kaynakları": where appointments came from, all time, cancelled ones left out. Which sources are
+// "Randevu kaynakları": where patients came from. Each patient counts once, by their first appointment that
+// was not cancelled; the columns say whether that first visit happened. Which sources are
 // listed is shared by everyone (referral_sources.visible), chosen with "Kaynakları seç".
 export default function ReferralSources({ table }) {
   const shown = table.rows.filter((row) => row.visible);
@@ -10,10 +11,10 @@ export default function ReferralSources({ table }) {
       <div className="home-panel-head home-referrals-head">
         <div>
           <h2 id="home-referrals-title">Randevu kaynakları</h2>
-          <p className="home-referrals-subtitle">Tüm dönem · iptal edilenler hariç</p>
+          <p className="home-referrals-subtitle">Her hastanın ilk randevusu · tüm dönem</p>
         </div>
         <div className="home-referrals-actions">
-          <span className="home-referrals-total">{table.shownTotal} randevu gösteriliyor</span>
+          <span className="home-referrals-total">{table.shownTotal} hasta gösteriliyor</span>
           <ReferralSourcePicker sources={table.rows.map(({ id, name, visible, icon }) => ({ id, name, visible, icon }))} />
         </div>
       </div>
@@ -51,7 +52,7 @@ export default function ReferralSources({ table }) {
       ) : (
         <p className="home-referrals-empty">Gösterilecek kaynak seçilmemiş. &quot;Kaynakları seç&quot; ile listeye kaynak ekleyin.</p>
       )}
-      <p className="home-referrals-note">Sayılar randevu kayıtlarındaki kaynaktan gelir; kaynağı boş randevular tabloda yer almaz.</p>
+      <p className="home-referrals-note">Her hasta bir kez sayılır: iptal edilmemiş ilk randevusuyla. Kaynak o randevudan, boşsa hasta kaydından alınır; ikisi de boşsa hasta tabloda yer almaz.</p>
     </section>
   );
 }
