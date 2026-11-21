@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { getStaffProfile } from "@/lib/auth";
+import Skeleton from "@/modules/shared/ui/Skeleton";
 import { getSettings } from "../server/settingsRepository";
 import { getAccountInfo } from "../server/accountService";
 import AccountCard from "./AccountCard";
@@ -15,7 +17,24 @@ import "./settings.css";
 
 // Ayarlar. Every staff member sees the general settings; admin-only cards are not rendered for others
 // (their actions check the role again, and the database once more).
-export default async function SettingsPage() {
+// The heading shows at once; the cards stream in behind <Suspense> once their data is read, so the page
+// never waits blank (Next.js "uncached data outside Suspense", same fix as Anasayfa).
+export default function SettingsPage() {
+  return (
+    <section className="settings-page">
+      <header className="settings-head">
+        <p className="ui-eyebrow">Şelale İşitme · Yönetim</p>
+        <h1>Ayarlar</h1>
+        <p>Klinik tercihleri, hesabınız ve yedekler.</p>
+      </header>
+      <Suspense fallback={<SettingsLoading />}>
+        <SettingsContent />
+      </Suspense>
+    </section>
+  );
+}
+
+async function SettingsContent() {
   const staff = await getStaffProfile();
   const [settings, account, users, booking, backup] = await Promise.all([
     getSettings(),
@@ -26,13 +45,7 @@ export default async function SettingsPage() {
   ]);
 
   return (
-    <section className="settings-page">
-      <header className="settings-head">
-        <p className="ui-eyebrow">Şelale İşitme · Yönetim</p>
-        <h1>Ayarlar</h1>
-        <p>Klinik tercihleri, hesabınız{staff?.isAdmin ? " ve kullanıcılar" : ""}.</p>
-      </header>
-
+    <>
       {/* Two independent columns instead of grid rows: in a grid, Güvenlik had to wait below the tall
           Hesabım card and left an empty gap under Genel. On narrow screens the columns stack. */}
       <div className="settings-grid">
@@ -50,6 +63,19 @@ export default async function SettingsPage() {
       <BackupCard backup={backup} isAdmin={Boolean(staff?.isAdmin)} />
 
       {staff?.isAdmin && <UsersCard users={users} currentUserId={staff.userId} />}
-    </section>
+    </>
+  );
+}
+
+function SettingsLoading() {
+  return (
+    <div className="settings-grid" aria-busy="true">
+      <div className="settings-card">
+        <Skeleton rows={5} label="Ayarlar yükleniyor…" />
+      </div>
+      <div className="settings-card">
+        <Skeleton rows={5} label="Hesap bilgileri yükleniyor…" />
+      </div>
+    </div>
   );
 }
