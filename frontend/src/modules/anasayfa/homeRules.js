@@ -103,9 +103,10 @@ export function isSgkInvoiceWindow(todayIso) {
 export function backupProblem({ enabled, lastRun, lastSuccessAt, now }) {
   if (!enabled) return { title: "Otomatik yedekleme kapalı", detail: "Ayarlar'daki Yedekleme bölümünden açın." };
   if (lastRun?.status === "failed") return { title: "Son yedek alınamadı", detail: "Yedekleme kayıtlarını kontrol edip elle bir yedek alın." };
-  if (!lastSuccessAt) return { title: "İlk otomatik yedek başarı kaydı yok", detail: "Yedekleme ayarlarını kontrol edin; ilk yedek alınınca bu uyarı kalkar." };
+  if (!lastSuccessAt) return { title: "İlk otomatik yedek başarı kaydı yok", detail: "İlk otomatik yedek gece alınır; hemen almak için Ayarlar'da \"Şimdi yedekle\"ye basın." };
   const ageDays = (new Date(now).getTime() - new Date(lastSuccessAt).getTime()) / DAY_MS;
-  if (ageDays > 7) return { title: "Son başarılı yedek 7 günden eski", detail: "Haftalık yedeğin çalıştığını kontrol edin." };
+  // Weekly backups: one day of slack after the expected night before warning.
+  if (ageDays > 8) return { title: "Son başarılı yedek 8 günden eski", detail: "Haftalık yedeğin çalıştığını Ayarlar'daki Yedekleme bölümünden kontrol edin." };
   return null;
 }
 

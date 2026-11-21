@@ -2,6 +2,8 @@ import "server-only";
 import { todayInClinic, formatDate } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 import * as repo from "./homeRepository";
+import { lastDownloadAt } from "@/modules/ayarlar/server/backupRepository";
+import { isOffsiteDue } from "@/modules/ayarlar/backupRules";
 import { ValidationError } from "./errors";
 import {
   FOLLOW_UPS,
@@ -30,7 +32,7 @@ function clinicDayStart(todayIso) {
   return `${todayIso}T00:00:00+03:00`;
 }
 
-export async function getHomeView({ canSeeMoney, now = new Date() }) {
+export async function getHomeView({ canSeeMoney, isAdmin = false, now = new Date() }) {
   const today = todayInClinic(now);
   const months = lastMonths(today, 6);
 
@@ -38,7 +40,7 @@ export async function getHomeView({ canSeeMoney, now = new Date() }) {
     getSalesChart(months, canSeeMoney),
     getVisitsChart(months),
     getPaymentChart(),
-    getSuggestions({ today, now, canSeeMoney }),
+    getSuggestions({ today, now, canSeeMoney, isAdmin }),
     getReferralTable(),
   ]);
   return { months, sales, visits, payments, suggestions, referrals };
@@ -78,7 +80,7 @@ async function getPaymentChart() {
 
 // ---- Suggestions ----------------------------------------------------------------------------------------
 
-async function getSuggestions({ today, now, canSeeMoney }) {
+async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
   const followWindow = {
     saleFrom: addDays(today, -FOLLOW_UPS.fortyFive.to),
     saleTo: addDays(today, -FOLLOW_UPS.firstCheck.from),
@@ -318,10 +320,24 @@ async function getSuggestions({ today, now, canSeeMoney }) {
       kind: "Yedekleme",
       title: backup.title,
       detail: backup.detail,
-      rule: "Koşul: Son yedek başarısız, yedekleme kapalı ya da son başarılı yedek 7 günden eski.",
+      rule: "Koşul: Son yedek başarısız, yedekleme kapalı ya da son başarılı yedek 8 günden eski.",
       action: { href: "/ayarlar", label: "Yedeklemeyi kontrol et →" },
     });
   }
+  // Monthly copy outside Supabase (decided 2026-11-21); only the admin can download, so only they see it.
+  if (isAdmin && lastSuccess && isOffsiteDue({ hasBackup: true, lastDownloadAt: await lastDownloadAt(), now })) {
+    list.push({
+      id: "backup-offsite",
+      tone: "amber",
+      icon: "disk",
+      kind: "Yedekleme",
+      title: "Bu ayın dış yedeğini alın",
+      detail: "Son yedeğin Excel ve JSON dosyalarını Ayarlar'dan indirip Google Drive'a ya da bilgisayara kaydedin. Supabase'e bir şey olursa bu kopya kalır.",
+      rule: "Koşul: Son 30 günde hiçbir yedek indirilmedi.",
+      action: { href: "/ayarlar", label: "Yedekleri aç →" },
+    });
+  }
+
 
   return list;
 }

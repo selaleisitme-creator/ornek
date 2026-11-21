@@ -6,6 +6,7 @@ import { toActionResult } from "@/modules/shared/server/actionResult";
 import * as settingsService from "./settingsService";
 import * as accountService from "./accountService";
 import * as usersService from "./usersService";
+import * as backupService from "./backupService";
 import { requireStepUp } from "@/lib/stepUp";
 
 // Thin gate for the settings page: check who is asking, hand the work to the service, refresh the page.
@@ -73,5 +74,37 @@ export async function saveSecuritySettings(_previous, form) {
     await requireAdmin();
     await settingsService.saveSecuritySettings(form);
     refresh();
+  });
+}
+
+// ---- Backups (Faz 6b) ----------------------------------------------------------------------------------------
+// The schedule is a clinic setting like the others (any staff member). Taking a backup now and downloading one
+// are the admin's: the files hold every patient and the cash ledger, which interns may not see (plan 3.6).
+// A download also asks for the 6-digit code, because the file leaves the panel.
+
+export async function saveBackupSettings(input) {
+  return toActionResult(async () => {
+    await requireStaff();
+    await backupService.saveBackupSettings(input);
+    refresh();
+  });
+}
+
+export async function runBackupNow() {
+  return toActionResult(async () => {
+    await requireAdmin();
+    const result = await backupService.runBackup("manual");
+    refresh();
+    return result;
+  });
+}
+
+export async function getBackupDownloadLink(runId, format) {
+  return toActionResult(async () => {
+    const admin = await requireAdmin();
+    await requireStepUp(admin.userId);
+    const url = await backupService.getDownloadLink(runId, format);
+    refresh();
+    return url;
   });
 }
