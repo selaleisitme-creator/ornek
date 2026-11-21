@@ -15,19 +15,20 @@ const PLOT_HEIGHT = BOTTOM - TOP;
 
 export default function BarChart({ bars, series, formatValue, title, axisUnit = 1 }) {
   const max = Math.max(0, ...bars.flatMap((bar) => bar.values));
-  const scale = chartScale(max);
+  // Scaled in axis units, so an empty money chart reads 0–4 (thousand) instead of five zeros.
+  const scale = chartScale(max / axisUnit);
   const slot = (RIGHT - LEFT) / bars.length;
   const paired = series.length > 1;
   const width = paired ? 19.67 : 24;
-  const y = (value) => BOTTOM - (value / scale.max) * PLOT_HEIGHT;
+  const y = (value) => BOTTOM - (value / (scale.max * axisUnit)) * PLOT_HEIGHT;
 
   return (
     <svg viewBox="0 0 360 200" width="100%" role="img" aria-label={title} className="home-chart">
       {scale.ticks.map((tick) => (
         <g key={tick}>
-          <line x1={LEFT} x2={RIGHT} y1={y(tick)} y2={y(tick)} stroke="#e1e7ed" />
-          <text x={LEFT - 5} y={y(tick) + 4} fontSize="10" textAnchor="end" fill="#6c7a89">
-            {formatAxis(tick / axisUnit)}
+          <line x1={LEFT} x2={RIGHT} y1={y(tick * axisUnit)} y2={y(tick * axisUnit)} stroke="#e1e7ed" />
+          <text x={LEFT - 5} y={y(tick * axisUnit) + 4} fontSize="10" textAnchor="end" fill="#6c7a89">
+            {formatAxis(tick)}
           </text>
         </g>
       ))}

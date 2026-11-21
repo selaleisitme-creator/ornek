@@ -51,6 +51,7 @@
 .home-chart-payments { border-top-color: #4d7898; }
 /* In a single wide column the SVG would scale its 10 px labels up to headline size; the height cap keeps the
    chart at its designed proportions (centred) instead. */
+.home-panel-loading { min-height: 300px; }
 .home-chart { display: block; max-height: 250px; overflow: visible; }
 
 /* The whole chart card opens its list: the header button stretches an invisible layer over the card. */
