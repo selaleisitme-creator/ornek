@@ -4,6 +4,7 @@ import { formatDate, formatDateTime } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 import { earSideLabel, initials } from "../patientRules";
 import PatientStatus from "./PatientStatus";
+import { NewSaleButton, PaymentButton, SaleFollowupButton } from "@/modules/satis/ui/SaleButtons";
 import DeviceEditButton from "./DeviceEditButton";
 import {
   EditPatientButton,
@@ -49,6 +50,7 @@ export default function PatientCard({ card, backHref }) {
           <StatusBadge tone={card.statusText.tone}>{card.statusText.label}</StatusBadge>
         </div>
         <div className="patients-profile-actions">
+          <NewSaleButton patient={{ id: card.id, name: card.name }} />
           <WhatsAppButton patient={person} />
           {card.candidate && <PromoteButton patient={person} />}
           <EditPatientButton patient={person} />
@@ -73,7 +75,7 @@ export default function PatientCard({ card, backHref }) {
       </dl>
 
       {!card.candidate && <DeviceSection card={card} person={person} />}
-      {!card.candidate && <SalesSection sales={card.sales} />}
+      {!card.candidate && <SalesSection sales={card.sales} patientId={card.id} />}
       <NotesSection card={card} person={person} />
 
       <div className="patients-profile-foot">
@@ -180,7 +182,7 @@ function DeviceSection({ card, person }) {
   );
 }
 
-function SalesSection({ sales }) {
+function SalesSection({ sales, patientId }) {
   return (
     <section className="patients-section" aria-labelledby="patients-sales">
       <SectionHead title={<span id="patients-sales">Satış geçmişi</span>} description="Bu hastaya kaydedilen ürün ve hizmetler. Önceki satışlar silinmeden kalır.">
@@ -223,6 +225,12 @@ function SalesSection({ sales }) {
                 <p className="patients-sale-payment">
                   Ödeme: {sale.payments.map((payment) => `${payment.method} ${formatMoney(payment.amount)}`).join(" + ")}
                 </p>
+              )}
+              {!sale.legacy && (
+                <div className="sale-history-actions">
+                  <SaleFollowupButton saleId={sale.id} patientId={patientId} />
+                  <PaymentButton saleId={sale.id} patientId={patientId} />
+                </div>
               )}
             </li>
           ))}
