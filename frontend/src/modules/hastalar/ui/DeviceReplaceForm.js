@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { formatDate } from "@/lib/dates";
 import { REPLACEMENT_REASONS, buildReplaceArgs, serialFromScan } from "../deviceRules";
 import { findReplacementUnit, replaceDevice } from "../server/actions";
 
@@ -122,6 +123,15 @@ export default function DeviceReplaceForm({ patient, device, catalog, today, run
           </label>
         ))}
       </fieldset>
+
+      {/* A warning only, not a rule: a manufacturer may still swap a device after the warranty, and whether the new
+          one starts a fresh warranty is the clinic's call. Without a new date the status keeps "Garanti bitti". */}
+      {reason === "warranty" && !warrantyEnd && device.warrantyEnd && device.warrantyEnd < today && (
+        <p className="device-found new" role="status">
+          Bu cihazın garantisi {formatDate(device.warrantyEnd)} tarihinde bitmiş. Yeni garanti bitişini girmezseniz hasta
+          &quot;Garanti bitti&quot; olarak görünmeye devam eder.
+        </p>
+      )}
 
       <div className="device-grid">
         <label className="ui-field" htmlFor="replace-date">
