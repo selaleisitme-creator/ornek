@@ -1,0 +1,53 @@
+/* Sale wizard and the patient history's sale buttons. Colours come from the shared tokens in shared/ui/ui.css. */
+
+.sale-wizard, .sale-step { display: grid; gap: 14px; }
+.sale-muted { margin: 0; color: var(--ui-muted); font-size: 13px; }
+.sale-note { margin: 0; padding: 8px 10px; border-radius: 8px; font-size: 13px; }
+.sale-note.info { background: color-mix(in srgb, var(--ui-ok) 10%, #fff); color: var(--ui-ok); }
+.sale-note.warn { background: var(--ui-cream); color: var(--ui-warn); }
+.sale-groups { display: flex; flex-wrap: wrap; gap: 8px; }
+.sale-groups button {
+  padding: 8px 14px; border: 1px solid var(--ui-line); border-radius: 999px; background: #fff; color: var(--ui-ink);
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.sale-groups button.on { border-color: var(--ui-blue); background: var(--ui-soft); color: var(--ui-blue); }
+.sale-list { display: grid; gap: 6px; }
+.sale-list h4 { margin: 4px 0 0; color: var(--ui-ink); font-size: 14px; }
+.sale-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 10px 12px;
+  border: 1px solid var(--ui-line); border-radius: 10px; background: #fff; color: var(--ui-ink); font: inherit; text-align: left;
+}
+button.sale-row { cursor: pointer; }
+.sale-row.on, button.sale-row:hover { border-color: var(--ui-blue); }
+.sale-row span { display: grid; gap: 2px; }
+.sale-row small, .sale-cart-head small { color: var(--ui-muted); font-size: 12.5px; }
+.sale-money { font-weight: 700; font-variant-numeric: tabular-nums; }
+.sale-custom { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; align-items: end; gap: 10px; padding-top: 6px; }
+.sale-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding-top: 6px; border-top: 1px solid var(--ui-line); }
+.sale-cart { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.sale-cart-line { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--ui-line); border-radius: 12px; background: var(--ui-soft); }
+.sale-cart-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.sale-cart-head span { display: grid; gap: 2px; }
+.sale-cart-fields, .sale-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.sale-wide { grid-column: 1 / -1; }
+.sale-link { padding: 0; border: 0; background: none; color: var(--ui-blue); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; justify-self: start; }
+.sale-payments { display: grid; gap: 10px; margin: 0; padding: 12px; border: 1px solid var(--ui-line); border-radius: 12px; }
+.sale-payments legend { padding: 0 4px; color: var(--ui-ink); font-size: 14px; font-weight: 700; }
+.sale-payment-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); align-items: end; gap: 10px; }
+.sale-summary { display: grid; gap: 4px; margin: 0; padding: 12px; border-radius: 12px; background: var(--ui-soft); }
+.sale-summary div { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
+.sale-summary dt { color: var(--ui-muted); }
+.sale-summary dd { margin: 0; font-variant-numeric: tabular-nums; }
+.sale-summary .strong dt, .sale-summary .strong dd { color: var(--ui-ink); font-weight: 700; }
+.sale-summary .due dd { color: var(--ui-warn); font-weight: 700; }
+.sale-site { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--ui-line); border-radius: 12px; }
+.sale-site header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.sale-site header > span:first-child { display: grid; gap: 2px; }
+.sale-site small { color: var(--ui-muted); font-size: 12.5px; }
+.sale-site-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.sale-tick { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.sale-history-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+@media (max-width: 600px) {
+  .sale-custom { grid-template-columns: minmax(0, 1fr); }
+}
