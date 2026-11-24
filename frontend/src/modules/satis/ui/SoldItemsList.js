@@ -8,6 +8,7 @@ import { listSoldItems } from "../server/soldService";
 import { loadCatalog } from "../server/saleService";
 import { RefundButton, SoldItemActions } from "./SoldItemActions";
 import { PaymentButton, SaleFollowupButton, WholesaleSaleButton } from "./SaleButtons";
+import SoldSearch from "./SoldSearch";
 import "./sale.css";
 
 const SIDES = { right: "Sağ", left: "Sol", both: "İki kulak" };
@@ -25,11 +26,7 @@ export default async function SoldItemsList({ search, openId }) {
     <>
       {/* Same card as Mevcut stok's toolbar: search on the left, the section switch and the buttons on the right. */}
       <div className="stock-toolbar sold-toolbar">
-        <form action="/stok" method="get" className="stock-search sold-search" role="search">
-          <input type="hidden" name="sekme" value="satilan" />
-          <input className="ui-input" type="search" name="ara" defaultValue={search ?? ""} placeholder="Ürün, seri no, hasta ya da satış no ara…" aria-label="Satılan ürünlerde ara" />
-          {search && <Link href="/stok?sekme=satilan" className="sale-link">Aramayı temizle ×</Link>}
-        </form>
+        <SoldSearch searchText={search} />
         <div className="stock-toolbar-filters">
           <StockSections />
           <WholesaleSaleButton className="stock-price-button" />
