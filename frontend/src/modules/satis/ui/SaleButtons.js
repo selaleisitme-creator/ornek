@@ -24,8 +24,21 @@ export function NewSaleButton({ patient }) {
   );
 }
 
+// Stok's "Toptan satış" (docs/faz-2-satis-plani.md, section 4): the same wizard for another hearing centre, at the
+// models' wholesale prices.
+export function WholesaleSaleButton({ className = "ui-button ui-button-ghost" }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className={className} onClick={() => setOpen(true)}>⇄ Toptan satış</button>
+      {open && <SaleWizard kind="wholesale" onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
 // "Site işlemleri": ÜTS numbers, warranty dates, invoice numbers and ticks, filled in after the sale.
-export function SaleFollowupButton({ saleId, patientId }) {
+// patientId is null for a wholesale sale, which is reached from Stok > Satılan ürünler instead of a patient card.
+export function SaleFollowupButton({ saleId, patientId, className = "ui-button ui-button-ghost" }) {
   const toast = useToast();
   const [form, setForm] = useState(null); // null while closed
   const [sites, setSites] = useState({});
@@ -64,7 +77,7 @@ export function SaleFollowupButton({ saleId, patientId }) {
 
   return (
     <>
-      <button type="button" className="ui-button ui-button-ghost" onClick={open}>Site işlemleri</button>
+      <button type="button" className={className} onClick={open}>Site işlemleri</button>
       {form && (
         <Modal
           open
@@ -134,7 +147,7 @@ export function SaleFollowupButton({ saleId, patientId }) {
 }
 
 // "Tahsilat ekle": a later payment from the patient, or the money SGK paid. What is owed comes from the database.
-export function PaymentButton({ saleId, patientId }) {
+export function PaymentButton({ saleId, patientId, className = "ui-button ui-button-ghost" }) {
   const toast = useToast();
   const today = todayInClinic();
   const [due, setDue] = useState(null); // null while closed
@@ -168,7 +181,7 @@ export function PaymentButton({ saleId, patientId }) {
 
   return (
     <>
-      <button type="button" className="ui-button ui-button-ghost" onClick={open}>Tahsilat ekle</button>
+      <button type="button" className={className} onClick={open}>Tahsilat ekle</button>
       {due && (
         <Modal
           open
@@ -184,14 +197,14 @@ export function PaymentButton({ saleId, patientId }) {
         >
           <form id="sale-payment-form" className="sale-step" onSubmit={save} noValidate>
             <dl className="sale-summary">
-              <div><dt>Hastanın kalan borcu</dt><dd>{formatMoney(due.patient)}</dd></div>
-              <div><dt>SGK&apos;dan beklenen</dt><dd>{formatMoney(due.sgk)}</dd></div>
+              <div><dt>{due.wholesale ? "Alıcının kalan borcu" : "Hastanın kalan borcu"}</dt><dd>{formatMoney(due.patient)}</dd></div>
+              {!due.wholesale && <div><dt>SGK&apos;dan beklenen</dt><dd>{formatMoney(due.sgk)}</dd></div>}
             </dl>
             <div className="sale-grid">
               <label className="ui-field" htmlFor="pay-payer">
                 <span className="ui-label">Kimden</span>
                 <select id="pay-payer" className="ui-input" value={form.payer} onChange={(event) => setForm((current) => ({ ...current, payer: event.target.value }))}>
-                  {due.patient > 0 && <option value="patient">Hasta</option>}
+                  {due.patient > 0 && <option value="patient">{due.wholesale ? "Alıcı" : "Hasta"}</option>}
                   {due.sgk > 0 && <option value="sgk">SGK</option>}
                 </select>
               </label>

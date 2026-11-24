@@ -7,6 +7,7 @@ import { formatMoney } from "@/lib/money";
 import { listSoldItems } from "../server/soldService";
 import { loadCatalog } from "../server/saleService";
 import { RefundButton, SoldItemActions } from "./SoldItemActions";
+import { PaymentButton, SaleFollowupButton, WholesaleSaleButton } from "./SaleButtons";
 import "./sale.css";
 
 const SIDES = { right: "Sağ", left: "Sol", both: "İki kulak" };
@@ -30,11 +31,12 @@ export default async function SoldItemsList({ search, openId }) {
           <button type="submit" className="ui-button ui-button-ghost">Ara</button>
           {search && <Link href="/stok?sekme=satilan" className="sale-link">Temizle</Link>}
         </form>
+        <WholesaleSaleButton />
         <RefundButton items={refundable} methods={methods} />
       </div>
 
       {items.length === 0 ? (
-        <EmptyState title={search ? "Aramaya uyan satış yok" : "Henüz satılan ürün yok"} description="Satışlar hasta kartındaki ＋ Hasta işlem ile kaydedilir." />
+        <EmptyState title={search ? "Aramaya uyan satış yok" : "Henüz satılan ürün yok"} description="Satışlar hasta kartındaki ＋ Hasta işlem ya da buradaki ⇄ Toptan satış ile kaydedilir." />
       ) : (
         <div className="sold-scroll">
           <table className="sold-table">
@@ -114,6 +116,13 @@ function SoldRow({ item, open, methods, search }) {
                 <div><dt>Eksik</dt><dd>{item.missing.join(", ")}</dd></div>
               )}
             </dl>
+            {/* A wholesale sale has no patient card, so its invoice, ÜTS and later payments are completed here. */}
+            {item.wholesale && !item.refunded && (
+              <p className="sold-actions">
+                <SaleFollowupButton saleId={item.saleId} patientId={null} />
+                <PaymentButton saleId={item.saleId} patientId={null} />
+              </p>
+            )}
           </td>
         </tr>
       )}

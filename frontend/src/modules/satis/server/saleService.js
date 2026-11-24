@@ -152,7 +152,7 @@ async function findBalance(saleId, patientId) {
 
 export async function loadBalance(saleId, patientId) {
   const balance = await findBalance(saleId, patientId);
-  return { patient: Number(balance.patient_remaining), sgk: Number(balance.sgk_remaining) };
+  return { patient: Number(balance.patient_remaining), sgk: Number(balance.sgk_remaining), wholesale: balance.sale_kind === "wholesale" };
 }
 
 // "Tahsilat ekle": what is owed is read from the database, not from the browser.

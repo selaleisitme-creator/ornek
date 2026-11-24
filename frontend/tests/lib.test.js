@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatMoney, formatMoneyInput, parseMoney } from "@/lib/money";
 import { formatDate, formatDateTime, parseDisplayDate, todayInClinic } from "@/lib/dates";
-import { formatPhone, normalizePhone } from "@/lib/phone";
+import { formatPhone, normalizePhone, splitPhone } from "@/lib/phone";
 import { normalizeGtin, parseScan } from "@/lib/gs1";
 import { whatsappLink } from "@/lib/whatsapp";
 import { toUserMessage } from "@/lib/postgresErrors";
@@ -93,6 +93,13 @@ describe("phone", () => {
 
   it("formats Turkish numbers for reading", () => {
     expect(formatPhone("+905321234567")).toBe("+90 532 123 45 67");
+  });
+
+  it("splits a stored number back into the phone field", () => {
+    expect(splitPhone("+905321234567")).toEqual({ defaultCountry: "+90", defaultNumber: "5321234567" });
+    expect(splitPhone("+4915123456789")).toEqual({ defaultCountry: "+49", defaultNumber: "15123456789" });
+    expect(splitPhone("")).toEqual({ defaultCountry: "+90", defaultNumber: "" });
+    expect(normalizePhone(...Object.values(splitPhone("+905321234567")))).toBe("+905321234567");
   });
 });
 
