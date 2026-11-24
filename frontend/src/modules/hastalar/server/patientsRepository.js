@@ -99,9 +99,9 @@ export async function listSales(patientId) {
       .select(
         `id, sale_no, sale_kind, sale_date,
          sale_payments(amount, payer, payment_methods(name)),
-         sale_items!sale_id(id, quantity, ear_side, warranty_end, service_id,
+         sale_items!sale_id(id, quantity, ear_side, warranty_start, warranty_end, service_id,
            services(name),
-           stock_units!stock_unit_id(id, serial_no, ear_side, products(name, category, brands(name))),
+           stock_units!stock_unit_id(id, serial_no, ear_side, products(name, category, brand_id, brands(name))),
            refunds(id, refunded_on, returns_device))`
       )
       .eq("patient_id", patientId)
@@ -125,7 +125,7 @@ export async function listReplacements(saleItemIds) {
       .select(
         `id, sale_item_id, replaced_on, reason,
          old_unit:stock_units!old_stock_unit_id(serial_no),
-         new_unit:stock_units!new_stock_unit_id(serial_no, products(name, brands(name)))`
+         new_unit:stock_units!new_stock_unit_id(serial_no, ear_side, products(name, category, brand_id, brands(name)))`
       )
       .in("sale_item_id", saleItemIds)
       .order("replaced_on")

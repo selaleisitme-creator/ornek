@@ -14,6 +14,7 @@ import {
   searchTerm,
   statusLabel,
 } from "../patientRules";
+import { currentDevices } from "../deviceRules";
 
 // Hastalar rules. Status, devices, warranty and adaptation all come from patient_overview (008), which
 // works them out from sales, appointments and contacts, so the list and the home page always agree.
@@ -124,6 +125,7 @@ export async function getPatientCard(id, staff) {
     notes: notes.map((note) => ({ id: note.id, title: note.title, body: note.body, notedOn: note.noted_on })),
     sales: sales.map((sale) => toSaleView(sale, valueOf)),
     deviceHistory: deviceHistory(sales, replacements),
+    currentDevices: currentDevices(sales, replacements),
     referralSources,
   };
 }
@@ -314,16 +316,6 @@ export async function addNote(id, input) {
     title: String(input.title).trim(),
     body: String(input.body).trim(),
   });
-}
-
-// The card's "Adaptasyon başlangıcı": a date typed by hand wins over the device sale date (patient_overview
-// uses coalesce(adaptation_start_manual, last device sale)). Empty goes back to the sale date.
-export async function setAdaptationStart(id, date) {
-  const patient = await findPatient(id);
-  const text = String(date ?? "").trim();
-  if (text && !/^\d{4}-\d{2}-\d{2}$/.test(text)) throw new ValidationError("Tarihi kontrol edin.");
-  if (text && text > todayInClinic()) throw new ValidationError("Adaptasyon başlangıcı bugünden sonra olamaz.");
-  await repo.updatePatient(patient.id, { adaptation_start_manual: text || null });
 }
 
 // An appointment candidate becomes a patient. No sale or device is added (the design's message says so).
