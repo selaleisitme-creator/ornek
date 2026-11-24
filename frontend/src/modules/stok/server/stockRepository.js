@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 // Each function is one query; the service puts the pieces together.
 
 const SUMMARY_COLUMNS =
-  "product_id, brand_name, name, category, type, unit, serial_policy, sale_price, min_stock, in_stock, stock_level, boxes, cartons, total_batteries";
+  "product_id, brand_name, name, category, type, unit, serial_policy, sale_price, wholesale_price, min_stock, in_stock, stock_level, boxes, cartons, total_batteries";
 
 function check({ data, error }) {
   if (error) throw error;

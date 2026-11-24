@@ -90,7 +90,12 @@ async function CurrentStock({ query }) {
       {lastBatch && (
         <PriceUndoBar
           batchId={lastBatch.batchId}
-          label={priceBatchLabel({ changedAtText: formatDateTime(lastBatch.changedAt), count: lastBatch.count, names: lastBatch.names })}
+          label={priceBatchLabel({
+            changedAtText: formatDateTime(lastBatch.changedAt),
+            count: lastBatch.count,
+            names: lastBatch.names,
+            field: lastBatch.field,
+          })}
           count={lastBatch.count}
         />
       )}

@@ -87,6 +87,7 @@ export async function listModels(input) {
     packsPerBox: row.packs_per_box,
     boxesPerCarton: row.boxes_per_carton,
     salePrice: toNumber(row.sale_price),
+    wholesalePrice: toNumber(row.wholesale_price),
     purchasePrice: toNumber(row.purchase_price),
     inStock: inStock.get(row.id) ?? 0,
   }));

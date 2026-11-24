@@ -28,7 +28,7 @@ export async function listPaymentMethods(codes) {
 }
 
 const PRODUCT_COLUMNS =
-  "id, brand_id, name, type, gtin, package_barcode, serial_policy, unit, pack_size, packs_per_box, boxes_per_carton, sale_price, purchase_price, brands(name)";
+  "id, brand_id, name, type, gtin, package_barcode, serial_policy, unit, pack_size, packs_per_box, boxes_per_carton, sale_price, wholesale_price, purchase_price, brands(name)";
 
 // Active models of one group, optionally of one brand, by name.
 export async function listProducts({ category, brandId }) {
@@ -95,7 +95,7 @@ export async function insertSupplier(name) {
 // ---------------------------------------------------------------------------
 
 const EDIT_COLUMNS =
-  "id, category, unit, name, type, gtin, package_barcode, manufacturer_ref, sale_price, warranty_months, min_stock, serial_policy, pack_size, packs_per_box, boxes_per_carton, active";
+  "id, category, unit, name, type, gtin, package_barcode, manufacturer_ref, sale_price, wholesale_price, warranty_months, min_stock, serial_policy, pack_size, packs_per_box, boxes_per_carton, active";
 
 export async function getProductForEdit(id) {
   const supabase = await createClient();

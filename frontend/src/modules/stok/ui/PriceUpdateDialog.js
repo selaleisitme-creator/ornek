@@ -8,9 +8,11 @@ import { useToast } from "@/modules/shared/ui/Toast";
 import { useStepUpAction } from "@/modules/shared/ui/useStepUpAction";
 import { formatMoney } from "@/lib/money";
 import {
+  PRICE_FIELDS,
   PRICE_MODES,
   PRICE_ROUNDINGS,
   matchesAllWords,
+  modelPrice,
   parsePriceValue,
   previewPriceChange,
   priceChangeError,
@@ -24,17 +26,24 @@ const STATUS_BADGES = {
   ok: { tone: "ok", label: "Değişecek" },
   same: { tone: "neutral", label: "Aynı kalır" },
   bad: { tone: "danger", label: "Sıfır ya da eksi" },
+  missing: { tone: "warn", label: "Toptan fiyatı yok" },
 };
 
-const VALUE_LABELS = { set: "Yeni satış fiyatı", percent: "Yüzde (zam için 7,5; indirim için -12)", amount: "Tutar (eklemek için 250; düşmek için -250)" };
+const VALUE_LABELS = { percent: "Yüzde (zam için 7,5; indirim için -12)", amount: "Tutar (eklemek için 250; düşmek için -250)" };
+
+// "satış" / "toptan satış": the word the titles and messages use for the chosen price.
+function priceWord(field) {
+  return field === "wholesale" ? "toptan satış" : "satış";
+}
 
 function modelText(model) {
   return `${model.brandName} ${model.name}`;
 }
 
-// "Fiyat güncelle": pick models (search, scan, tick), then a new price, a percentage or an amount with
-// rounding, previewed old → new before anything is written. Only the sale price changes (Faz 1 decision 4);
-// past sales keep their own prices. The preview and the server use the same rule (computeNewPrice).
+// "Fiyat güncelle": choose the retail or the wholesale price, pick models (search, scan, tick), then a new price,
+// a percentage or an amount with rounding, previewed old → new before anything is written. The purchase price is
+// never changed here, and past sales keep their own prices. The preview and the server use the same rule
+// (computeNewPrice).
 export default function PriceUpdateDialog({ onClose }) {
   const toast = useToast();
   const { run, stepUpDialog } = useStepUpAction();
@@ -44,6 +53,7 @@ export default function PriceUpdateDialog({ onClose }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(() => new Set());
   const [scanNote, setScanNote] = useState(null);
+  const [field, setField] = useState("sale");
   const [mode, setMode] = useState("set"); // the design opens on "Yeni fiyat"
   const [valueText, setValueText] = useState("");
   const [roundTo, setRoundTo] = useState(0);
@@ -72,10 +82,10 @@ export default function PriceUpdateDialog({ onClose }) {
   const chosen = useMemo(() => (models ?? []).filter((model) => selected.has(model.id)), [models, selected]);
 
   const value = parsePriceValue(mode, valueText);
-  const change = { mode, value, roundTo: mode === "set" ? 0 : roundTo };
+  const change = { mode, value, roundTo: mode === "set" ? 0 : roundTo, field };
   const changeError = valueText.trim() ? priceChangeError(change) : null;
   const { rows, counts } = previewPriceChange(chosen, change);
-  const canApply = !changeError && value !== null && counts.bad === 0 && counts.ok > 0;
+  const canApply = !changeError && value !== null && counts.bad === 0 && counts.missing === 0 && counts.ok > 0;
 
   function toggle(id, checked) {
     setSelected((current) => {
@@ -112,9 +122,9 @@ export default function PriceUpdateDialog({ onClose }) {
     setBusy(true);
     setError(null);
     try {
-      const result = await run(applyBulkPrices, { productIds: [...selected], mode, value, roundTo: change.roundTo });
+      const result = await run(applyBulkPrices, { productIds: [...selected], mode, value, roundTo: change.roundTo, field });
       if (result?.ok) {
-        toast(`${result.data?.changed ?? counts.ok} modelin satış fiyatı güncellendi.`);
+        toast(`${result.data?.changed ?? counts.ok} modelin ${priceWord(field)} fiyatı güncellendi.`);
         onClose();
       } else if (!result?.cancelled) {
         setError(result?.error ?? "Fiyatlar güncellenemedi.");
@@ -163,7 +173,10 @@ export default function PriceUpdateDialog({ onClose }) {
     step === 0 ? (
       <>Fiyat güncelle <span className="stock-modal-step">· 1/2 Ürün seç</span></>
     ) : (
-      <>Satış fiyatını güncelle <span className="stock-modal-step strong">· 2/2 Yeni fiyat</span></>
+      <>
+        {field === "wholesale" ? "Toptan satış fiyatını güncelle" : "Satış fiyatını güncelle"}{" "}
+        <span className="stock-modal-step strong">· 2/2 Yeni fiyat</span>
+      </>
     );
 
   return (
@@ -171,19 +184,27 @@ export default function PriceUpdateDialog({ onClose }) {
       <div className="stock-price-dialog">
         {step === 0 && (
           <>
-            <p className="stock-modal-lead">Satış fiyatı güncellenecek modelleri işaretleyin. Daha önce tamamlanan satışlar değişmez.</p>
+            <p className="stock-modal-lead">
+              Fiyatı güncellenecek modelleri işaretleyin. Daha önce tamamlanan satışlar değişmez.
+            </p>
 
-            {/* The design offers retail or wholesale here. The clinic sells no wholesale (Şelale Hanım, 2026-11-05),
-                so only the retail card is shown, selected and fixed; a second card can join if that changes. */}
             <fieldset className="stock-price-kind">
               <legend>Hangi fiyat güncellenecek?</legend>
-              <label className="stock-price-kind-card on">
-                <input type="radio" name="price-kind" value="sale" checked readOnly />
-                <span>
-                  <b>Perakende satış fiyatı</b>
-                  <small>Hastaya uygulanan satış fiyatı</small>
-                </span>
-              </label>
+              {PRICE_FIELDS.map((option) => (
+                <label key={option.value} className={`stock-price-kind-card${field === option.value ? " on" : ""}`}>
+                  <input
+                    type="radio"
+                    name="price-kind"
+                    value={option.value}
+                    checked={field === option.value}
+                    onChange={() => setField(option.value)}
+                  />
+                  <span>
+                    <b>{option.label} fiyatı</b>
+                    <small>{option.hint}</small>
+                  </span>
+                </label>
+              ))}
             </fieldset>
 
             <div className="stock-price-search" ref={searchBox}>
@@ -234,7 +255,7 @@ export default function PriceUpdateDialog({ onClose }) {
                             {model.brandName} · {stockGroupByCategory(model.category).label}
                           </small>
                         </span>
-                        <span className="stock-price-model-price">{formatMoney(model.salePrice)}</span>
+                        <span className="stock-price-model-price">{formatMoney(modelPrice(model, field))}</span>
                       </label>
                     </li>
                   );
@@ -268,7 +289,7 @@ export default function PriceUpdateDialog({ onClose }) {
 
             <div className={`stock-price-fields${mode === "set" ? " single" : ""}`}>
               <label className="ui-field" htmlFor="price-value">
-                <span className="ui-label">{VALUE_LABELS[mode]}</span>
+                <span className="ui-label">{mode === "set" ? `Yeni ${priceWord(field)} fiyatı` : VALUE_LABELS[mode]}</span>
                 <span className={`ui-input-wrap${changeError ? " invalid" : ""}`}>
                   <input
                     id="price-value"
@@ -331,12 +352,19 @@ export default function PriceUpdateDialog({ onClose }) {
                 <p className="stock-entry-summary" role="status">
                   {counts.ok} model değişecek{counts.same ? ` · ${counts.same} model aynı kalacak` : ""}
                   {counts.bad ? ` · ${counts.bad} modelin yeni fiyatı sıfır ya da eksi` : ""}
+                  {counts.missing ? ` · ${counts.missing} modelin toptan fiyatı yok` : ""}
                 </p>
               </div>
             )}
             {counts.bad > 0 && <p className="stock-entry-note warn">Yeni fiyatı sıfır ya da eksi olan model varken fiyatlar uygulanmaz.</p>}
+            {counts.missing > 0 && (
+              <p className="stock-entry-note warn">
+                Toptan fiyatı olmayan modele yüzde ya da tutar uygulanamaz. &quot;Yeni fiyat&quot; ile fiyat verin ya da o modeli
+                seçimden çıkarın.
+              </p>
+            )}
             <p className="stock-modal-hint">
-              Bu işlem modellerin satış fiyatını günceller; daha önce tamamlanan satışlar değişmez. Uygulamadan önce 6 haneli kodunuz istenir.
+              Bu işlem modellerin {priceWord(field)} fiyatını günceller; daha önce tamamlanan satışlar değişmez. Uygulamadan önce 6 haneli kodunuz istenir.
             </p>
           </>
         )}

@@ -364,18 +364,27 @@ function isOptionalWhole(value, { min }) {
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 // A new model's fields → the first problem as a Turkish sentence, or null when it can be saved.
+// A new model needs its wholesale price, as in the design; "Model düzenle" does not, because models saved
+// before 012_wholesale_price.sql have none until someone enters it.
 export function newModelError(model) {
   if (!Number.isSafeInteger(Number(model?.brandId)) || !(Number(model?.brandId) > 0)) return "Marka seçin.";
-  return modelFieldsError(model);
+  return modelFieldsError(model, { requireWholesale: true });
+}
+
+function isEmpty(value) {
+  return value === null || value === undefined || value === "";
 }
 
 // The model fields both "Stok ekle" and "Model düzenle" share (everything but the brand, which is fixed
 // once the model exists). model.category must be set: batteries need their pack size.
-export function modelFieldsError(model = {}) {
+export function modelFieldsError(model = {}, { requireWholesale = false } = {}) {
   const name = String(model.name ?? "").trim();
   if (!name) return "Model adı zorunlu.";
   if (name.length > 120) return "Model adı en fazla 120 karakter olabilir.";
   if (!(Number(model.salePrice) > 0)) return "Satış fiyatı sıfırdan büyük olmalı.";
+  if (isEmpty(model.wholesalePrice) ? requireWholesale : !(Number(model.wholesalePrice) > 0)) {
+    return "Toptan satış fiyatı sıfırdan büyük olmalı.";
+  }
   const gtin = cleanGtin(model.gtin);
   if (gtin.error) return gtin.error;
   if (!isOptionalWhole(model.warrantyMonths, { min: 0 })) return "Garanti süresi ay olarak tam sayı olmalı.";
@@ -537,6 +546,7 @@ export function buildStockEntryArgs(input, { existing = null, today }) {
       packs_per_box: battery ? optionalWhole(source.packsPerBox) : null,
       boxes_per_carton: battery ? optionalWhole(source.boxesPerCarton) : null,
       sale_price: Math.round(Number(source.salePrice) * 100) / 100,
+      wholesale_price: Math.round(Number(source.wholesalePrice) * 100) / 100,
       purchase_price: unitPrice,
       warranty_months: optionalWhole(source.warrantyMonths) ?? 0,
       min_stock: optionalWhole(source.minStock) ?? 0,
@@ -579,6 +589,7 @@ export function buildModelUpdate(input, { category }) {
     package_barcode: text(source.packageBarcode, 60),
     manufacturer_ref: text(source.manufacturerRef, 60),
     sale_price: Math.round(Number(source.salePrice) * 100) / 100,
+    wholesale_price: isEmpty(source.wholesalePrice) ? null : Math.round(Number(source.wholesalePrice) * 100) / 100,
     warranty_months: optionalWhole(source.warrantyMonths) ?? 0,
     min_stock: optionalWhole(source.minStock) ?? 0,
     serial_policy: source.serialPolicy,
@@ -699,6 +710,17 @@ export function rowBySerial(rows, serial) {
 // same rule before it calls update_prices_bulk (010), so the preview and the database never disagree.
 // ---------------------------------------------------------------------------
 
+// Which price "Fiyat güncelle" changes (update_prices_bulk p_field).
+export const PRICE_FIELDS = [
+  { value: "sale", label: "Perakende", hint: "Hasta satışlarında kullanılan fiyat" },
+  { value: "wholesale", label: "Toptan", hint: "Toptan satışta kullanılan birim fiyat" },
+];
+
+export function modelPrice(model, field = "sale") {
+  const price = field === "wholesale" ? model?.wholesalePrice : model?.salePrice;
+  return price === null || price === undefined ? null : Number(price);
+}
+
 export const PRICE_MODES = [
   { value: "set", label: "Yeni fiyat" },
   { value: "percent", label: "% zam / indirim" },
@@ -782,19 +804,31 @@ export function priceChangeError(change) {
 }
 
 // The selected models → one preview row each and the counts the dialog needs:
-//   ok: the price changes, same: it would stay as it is, bad: the new price would be zero or less.
-// models: [{ id, brandName, name, salePrice }]. With an unusable change the rows have no new price yet.
+//   ok: the price changes, same: it would stay as it is, bad: the new price would be zero or less,
+//   missing: no wholesale price yet, so a percent or amount change has nothing to start from (the database
+//   refuses the whole change; "Yeni fiyat" still works and gives the model its first wholesale price).
+// models: [{ id, brandName, name, salePrice, wholesalePrice }]; change.field: "sale" (default) or "wholesale".
+// With an unusable change the rows have no new price yet.
 export function previewPriceChange(models, change) {
   const usable = !priceChangeError(change);
+  const field = change?.field === "wholesale" ? "wholesale" : "sale";
   const rows = (models ?? []).map((model) => {
-    const oldPrice = Number(model.salePrice);
-    const newPrice = usable ? computeNewPrice(oldPrice, change) : null;
+    const oldPrice = modelPrice(model, field);
+    let newPrice = null;
     let status = null;
-    if (newPrice !== null) status = newPrice <= 0 ? "bad" : newPrice === oldPrice ? "same" : "ok";
+    if (oldPrice === null && change?.mode !== "set") {
+      status = "missing";
+    } else if (usable) {
+      newPrice = computeNewPrice(oldPrice ?? 0, change);
+      if (newPrice !== null) status = newPrice <= 0 ? "bad" : newPrice === oldPrice ? "same" : "ok";
+    }
     return { productId: model.id, brandName: model.brandName ?? "", name: model.name, oldPrice, newPrice, status };
   });
   const count = (status) => rows.filter((row) => row.status === status).length;
-  return { rows, counts: { total: rows.length, ok: count("ok"), same: count("same"), bad: count("bad") } };
+  return {
+    rows,
+    counts: { total: rows.length, ok: count("ok"), same: count("same"), bad: count("bad"), missing: count("missing") },
+  };
 }
 
 // What the value box accepts. Percent: "7,5", "-12", "+5" (two decimals at most). Prices and amounts use the
@@ -817,19 +851,23 @@ export function parsePriceValue(mode, text) {
 export function buildBulkPriceArgs(input) {
   const productIds = cleanUnitIds(input?.productIds, MAX_PRICE_MODELS);
   if (!productIds) return { error: `Fiyatı değişecek modelleri seçin (en fazla ${MAX_PRICE_MODELS}).` };
+  const field = input?.field ?? "sale";
+  if (!PRICE_FIELDS.some((option) => option.value === field)) return { error: "Perakende ya da toptan fiyatı seçin." };
   const mode = input?.mode;
   const roundTo = mode === "set" ? 0 : Number(input?.roundTo);
   const change = { mode, value: input?.value, roundTo };
   const problem = priceChangeError(change);
   if (problem) return { error: problem };
-  return { args: { productIds, mode, value: toHundredths(change.value) / 100, roundTo } };
+  return { args: { productIds, mode, value: toHundredths(change.value) / 100, roundTo, field } };
 }
 
 // "Son fiyat güncellemesi: 14.11.2026 15:10 · 5 model (Alpha 5, Alpha 3 …)"; the date arrives formatted.
-export function priceBatchLabel({ changedAtText, count, names = [] }) {
+// A wholesale batch says so: "Son toptan fiyat güncellemesi: …".
+export function priceBatchLabel({ changedAtText, count, names = [], field = "sale" }) {
   const more = count > names.length ? " …" : "";
   const list = names.length ? ` (${names.join(", ")}${more})` : "";
-  return `Son fiyat güncellemesi: ${changedAtText} · ${count} model${list}`;
+  const kind = field === "wholesale" ? "toptan fiyat" : "fiyat";
+  return `Son ${kind} güncellemesi: ${changedAtText} · ${count} model${list}`;
 }
 
 // ---------------------------------------------------------------------------

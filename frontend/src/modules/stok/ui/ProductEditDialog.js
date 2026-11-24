@@ -21,8 +21,12 @@ function TextField({ id, label, value, onChange, ...rest }) {
 
 // The editable copy starts from the server's values; only the fields this window may change are kept.
 function draftFrom(details) {
-  const { name, type, salePrice, gtin, packageBarcode, manufacturerRef, warrantyMonths, minStock, serialPolicy, packSize, packsPerBox, boxesPerCarton } = details;
-  return { name, type, salePrice, gtin, packageBarcode, manufacturerRef, warrantyMonths, minStock, serialPolicy, packSize, packsPerBox, boxesPerCarton };
+  const { name, type, salePrice, wholesalePrice, gtin, packageBarcode, manufacturerRef, warrantyMonths, minStock, serialPolicy } = details;
+  const { packSize, packsPerBox, boxesPerCarton } = details;
+  return {
+    name, type, salePrice, wholesalePrice, gtin, packageBarcode, manufacturerRef, warrantyMonths, minStock, serialPolicy,
+    packSize, packsPerBox, boxesPerCarton,
+  };
 }
 
 // "Model düzenle": the new-model fields (brand and group stay fixed), the photos, and "Modeli pasifleştir".
@@ -95,6 +99,13 @@ export default function ProductEditDialog({ details, brandName, inStock, serialL
           <TextField id="edit-name" label="Model adı" value={draft.name} onChange={set("name")} maxLength={120} required />
           <TextField id="edit-type" label="Tip / varyant (isteğe bağlı)" value={draft.type} onChange={set("type")} maxLength={120} />
           <MoneyInput id="edit-sale-price" label="Satış fiyatı" defaultValue={draft.salePrice} onChange={set("salePrice")} required />
+          {/* Optional here: models saved before the wholesale price existed have none until it is entered. */}
+          <MoneyInput
+            id="edit-wholesale-price"
+            label="Toptan satış fiyatı (boşsa girilmedi)"
+            defaultValue={draft.wholesalePrice}
+            onChange={set("wholesalePrice")}
+          />
           <TextField id="edit-gtin" label="GTIN (isteğe bağlı)" value={draft.gtin} onChange={set("gtin")} inputMode="numeric" maxLength={20} />
           <TextField id="edit-package" label="Ambalaj barkodu (isteğe bağlı)" value={draft.packageBarcode} onChange={set("packageBarcode")} maxLength={60} />
           <TextField id="edit-ref" label="Üretici REF (isteğe bağlı)" value={draft.manufacturerRef} onChange={set("manufacturerRef")} maxLength={60} />

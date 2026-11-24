@@ -3,7 +3,8 @@ import { buildBulkPriceArgs, previewPriceChange } from "../stockRules";
 import * as repo from "./priceRepository";
 import { ValidationError } from "./errors";
 
-// Bulk sale price update and its undo (Faz 1 plan 4.4 item 5). Only the sale price (decision 4).
+// Bulk price update and its undo (Faz 1 plan 4.4 item 5): the sale price, or since 012_wholesale_price.sql the
+// wholesale price. The purchase price is never changed in bulk.
 
 const NOTHING_CHANGES = "Fiyatlar zaten bu değerde; değişiklik yapılmadı.";
 const BATCH_NAMES_SHOWN = 3;
@@ -16,6 +17,7 @@ function toModel(row) {
     name: row.name,
     category: row.category,
     salePrice: Number(row.sale_price),
+    wholesalePrice: row.wholesale_price === null || row.wholesale_price === undefined ? null : Number(row.wholesale_price),
     gtin: row.gtin,
   };
 }
@@ -38,6 +40,7 @@ export async function getLastPriceBatch() {
   return {
     batchId: latest.batch_id,
     changedAt: latest.changed_at,
+    field: latest.price_field,
     count: rows.length,
     names: rows.slice(0, BATCH_NAMES_SHOWN).map((row) => row.products?.name ?? "").filter(Boolean),
   };
@@ -52,14 +55,20 @@ function modelLabel(row) {
 export async function applyBulkPrices(input) {
   const built = buildBulkPriceArgs(input);
   if (built.error) throw new ValidationError(built.error);
-  const { productIds, mode, value, roundTo } = built.args;
+  const { productIds, mode, value, roundTo, field } = built.args;
 
   const rows = await repo.listModelsByIds(productIds);
   if (rows.length !== productIds.length || rows.some((row) => !row.active)) {
     throw new ValidationError("Seçilen modellerden bazıları bulunamadı ya da pasif; sayfayı yenileyin.");
   }
 
-  const { rows: preview, counts } = previewPriceChange(rows.map(toModel), { mode, value, roundTo });
+  const { rows: preview, counts } = previewPriceChange(rows.map(toModel), { mode, value, roundTo, field });
+  if (counts.missing > 0) {
+    const names = preview.filter((row) => row.status === "missing").map(modelLabel).slice(0, 3).join(", ");
+    throw new ValidationError(
+      `Toptan fiyatı olmayan model var (${names}). Önce "Yeni fiyat" ile ya da model düzenleyerek fiyatı girin.`
+    );
+  }
   if (counts.bad > 0) {
     const names = preview.filter((row) => row.status === "bad").map(modelLabel).slice(0, 3).join(", ");
     throw new ValidationError(`Yeni fiyat sıfır ya da eksi oluyor (${names}). Hiçbir fiyat değiştirilmedi.`);

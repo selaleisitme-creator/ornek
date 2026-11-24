@@ -29,6 +29,7 @@ function emptyModel(category, brandId, gtin) {
     name: "",
     type: "",
     salePrice: null,
+    wholesalePrice: null,
     gtin: gtin ?? "",
     packageBarcode: "",
     manufacturerRef: "",

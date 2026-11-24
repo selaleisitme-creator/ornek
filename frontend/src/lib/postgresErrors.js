@@ -29,6 +29,9 @@ const KNOWN = [
   // update_prices_bulk (010) and undo_price_batch (008).
   [/no products to update/i, "Fiyatı değişecek modelleri seçin."],
   [/Unknown price mode/i, "Fiyat seçeneği geçersiz. Sayfayı yenileyip tekrar deneyin."],
+  // update_prices_bulk p_field (012).
+  [/Unknown price field/i, "Perakende ya da toptan fiyatı seçin. Sayfayı yenileyip tekrar deneyin."],
+  [/has no wholesale price/i, "Seçilen modellerden birinin toptan fiyatı yok. Önce \"Yeni fiyat\" ile ya da model düzenleyerek girin."],
   [/price change needs a value/i, "Fiyat değişikliği için bir değer yazın."],
   [/can only be rounded to/i, "Yuvarlama yalnızca kuruş, tam TL, 10 TL ya da 100 TL olabilir."],
   [/Some products were not found/i, "Seçilen modellerden bazıları bulunamadı; sayfayı yenileyin."],
