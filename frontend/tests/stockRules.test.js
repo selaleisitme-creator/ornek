@@ -399,7 +399,8 @@ describe("address bar", () => {
 
   it("reads and writes the section", () => {
     expect(readStockQuery({ sekme: "servis" }).sekme).toBe("servis");
-    expect(readStockQuery({ sekme: "satilan" }).sekme).toBe("stok");
+    expect(readStockQuery({ sekme: "satilan" }).sekme).toBe("satilan");
+    expect(readStockQuery({ sekme: "baska" }).sekme).toBe("stok");
     expect(stockHref({}, { sekme: "servis" })).toBe("/stok?sekme=servis");
     expect(stockHref(readStockQuery({ sekme: "stok", grup: "pil" }))).toBe("/stok?grup=pil");
   });

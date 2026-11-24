@@ -1,0 +1,122 @@
+import Link from "next/link";
+import StatusBadge from "@/modules/shared/ui/StatusBadge";
+import EmptyState from "@/modules/shared/ui/EmptyState";
+import StockSections from "@/modules/stok/ui/StockSections";
+import { formatDate } from "@/lib/dates";
+import { formatMoney } from "@/lib/money";
+import { listSoldItems } from "../server/soldService";
+import { loadCatalog } from "../server/saleService";
+import { RefundButton, SoldItemActions } from "./SoldItemActions";
+import "./sale.css";
+
+const SIDES = { right: "Sağ", left: "Sol", both: "İki kulak" };
+
+// Stok > Satılan ürünler (docs/faz-2-satis-plani.md, section 3). Server component: the list and the search are plain
+// links and a GET form, so they work before any script loads; only the two windows are client code.
+//   search: ?ara=; openId: ?ac= (a sale item). The open row is framed in blue and shows its details, which is what the
+//   home page's "Tüm satış geçmişi" links to (/stok?sekme=satilan&ac=<id>#sold-<id>).
+export default async function SoldItemsList({ search, openId }) {
+  const [items, catalog] = await Promise.all([listSoldItems({ search }), loadCatalog()]);
+  const refundable = items.filter((item) => !item.refunded);
+  const methods = catalog.paymentMethods;
+
+  return (
+    <>
+      <div className="stock-toolbar stock-toolbar-plain sold-toolbar">
+        <StockSections />
+        <form action="/stok" method="get" className="sold-search" role="search">
+          <input type="hidden" name="sekme" value="satilan" />
+          <input className="ui-input" type="search" name="ara" defaultValue={search ?? ""} placeholder="Ürün, seri no, hasta ya da satış no ara…" aria-label="Satılan ürünlerde ara" />
+          <button type="submit" className="ui-button ui-button-ghost">Ara</button>
+          {search && <Link href="/stok?sekme=satilan" className="sale-link">Temizle</Link>}
+        </form>
+        <RefundButton items={refundable} methods={methods} />
+      </div>
+
+      {items.length === 0 ? (
+        <EmptyState title={search ? "Aramaya uyan satış yok" : "Henüz satılan ürün yok"} description="Satışlar hasta kartındaki ＋ Hasta işlem ile kaydedilir." />
+      ) : (
+        <div className="sold-scroll">
+          <table className="sold-table">
+            <caption className="ui-visually-hidden">Satılan ürünler</caption>
+            <thead>
+              <tr>
+                <th scope="col">Tarih</th>
+                <th scope="col">Ürün</th>
+                <th scope="col">Seri no</th>
+                <th scope="col">Hasta / alıcı</th>
+                <th scope="col" className="ui-end">Satış fiyatı</th>
+                <th scope="col">Ödeme</th>
+                <th scope="col">Durum</th>
+                <th scope="col">İşlem</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => {
+                const open = item.saleItemId === openId;
+                return (
+                  <SoldRow key={item.saleItemId} item={item} open={open} methods={methods} search={search} />
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
+function SoldRow({ item, open, methods, search }) {
+  const detailsHref = `/stok?sekme=satilan${search ? `&ara=${encodeURIComponent(search)}` : ""}${open ? "" : `&ac=${item.saleItemId}#sold-${item.saleItemId}`}`;
+  return (
+    <>
+      <tr id={`sold-${item.saleItemId}`} className={open ? "sold-open" : undefined}>
+        <td>{formatDate(item.saleDate)}</td>
+        <td>
+          <b>{item.product}</b>
+          <small className="sale-muted"> {item.saleNo}{item.wholesale ? " · toptan" : ""}</small>
+        </td>
+        <td className="stock-code">{item.serial ?? "—"}</td>
+        <td>{item.patientId ? <Link href={`/hastalar?ac=${item.patientId}`}>{item.buyer}</Link> : (item.buyer ?? "—")}</td>
+        <td className="ui-end">{formatMoney(item.value)}</td>
+        <td>{item.paymentText ?? "—"}</td>
+        <td>
+          {item.refunded ? (
+            <StatusBadge tone="danger">İade edildi</StatusBadge>
+          ) : item.missing.length ? (
+            <StatusBadge tone="warn">Eksik bilgi</StatusBadge>
+          ) : (
+            <StatusBadge tone="ok">Tamam</StatusBadge>
+          )}
+        </td>
+        <td>
+          <span className="sold-actions">
+            <Link href={detailsHref} scroll={false} className="sale-link">{open ? "Kapat" : "Ayrıntı"}</Link>
+            <SoldItemActions item={item} methods={methods} />
+          </span>
+        </td>
+      </tr>
+      {open && (
+        <tr className="sold-open sold-details">
+          <td colSpan={8}>
+            <dl>
+              <div><dt>Satış no</dt><dd>{item.saleNo}</dd></div>
+              <div><dt>Alış fiyatı</dt><dd>{formatMoney(item.purchasePrice)}</dd></div>
+              <div><dt>Kulak</dt><dd>{SIDES[item.earSide] ?? "—"}</dd></div>
+              <div><dt>ÜTS no</dt><dd>{item.utsNo || "—"}</dd></div>
+              <div><dt>ÜRT tarihi</dt><dd>{formatDate(item.productionDate)}</dd></div>
+              <div><dt>WSA kodu</dt><dd>{item.wsaCode || "—"}</dd></div>
+              <div><dt>Garanti bitişi</dt><dd>{formatDate(item.warrantyEnd)}</dd></div>
+              {item.refund && (
+                <div><dt>İade</dt><dd>{formatDate(item.refund.date)} · {formatMoney(item.refund.amount)}{item.refund.returnsDevice ? " · stoğa döndü" : ""}</dd></div>
+              )}
+              {item.missing.length > 0 && (
+                <div><dt>Eksik</dt><dd>{item.missing.join(", ")}</dd></div>
+              )}
+            </dl>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}

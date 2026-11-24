@@ -51,3 +51,21 @@ button.sale-row { cursor: pointer; }
 @media (max-width: 600px) {
   .sale-custom { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Stok > Satılan ürünler */
+.sold-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.sold-search { display: flex; flex: 1 1 320px; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sold-search .ui-input { flex: 1 1 220px; }
+.sold-scroll { overflow-x: auto; border: 1px solid var(--ui-line); border-radius: 12px; background: #fff; }
+.sold-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.sold-table th { padding: 10px 12px; border-bottom: 1px solid var(--ui-line); color: var(--ui-muted); font-size: 12px; text-align: left; white-space: nowrap; }
+.sold-table td { padding: 10px 12px; border-bottom: 1px solid var(--ui-line); vertical-align: top; }
+.sold-table tr.sold-open td { background: var(--ui-soft); }
+.sold-table tr.sold-open:not(.sold-details) td { border-top: 2px solid var(--ui-blue); }
+.sold-table tr.sold-open td:first-child { border-left: 2px solid var(--ui-blue); }
+.sold-table tr.sold-open td:last-child { border-right: 2px solid var(--ui-blue); }
+.sold-table tr.sold-details td { border-bottom: 2px solid var(--ui-blue); }
+.sold-details dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px 16px; margin: 0; }
+.sold-details dt { color: var(--ui-muted); font-size: 12px; }
+.sold-details dd { margin: 0; color: var(--ui-ink); font-weight: 600; }
+.sold-actions { display: inline-flex; flex-wrap: wrap; gap: 10px; white-space: nowrap; }
