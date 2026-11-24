@@ -13,7 +13,6 @@ import {
   promoteCandidate,
   removePatient,
   revealNationalId,
-  setAdaptationStart,
 } from "../server/actions";
 import PatientDialog from "./PatientDialog";
 
@@ -164,80 +163,6 @@ export function NoteButton({ patient }) {
               onChange={(event) => setBody(event.target.value)}
             />
           </label>
-          {error && (
-            <p className="ui-error" role="alert">
-              {error}
-            </p>
-          )}
-        </form>
-      </Modal>
-    </>
-  );
-}
-
-// The adaptation start date typed by hand (patients.adaptation_start_manual). Empty goes back to the sale date.
-export function AdaptationButton({ patient }) {
-  const toast = useToast();
-  const [open, setOpen] = useState(false);
-  const [date, setDate] = useState(patient.adaptationStartManual ?? "");
-  const [error, setError] = useState(null);
-  const [busy, setBusy] = useState(false);
-
-  async function save(event) {
-    event.preventDefault();
-    setBusy(true);
-    setError(null);
-    const result = await setAdaptationStart(patient.id, date);
-    setBusy(false);
-    if (!result?.ok) return setError(result?.error ?? "Kaydedilemedi.");
-    toast(date ? "Adaptasyon başlangıcı kaydedildi." : "Adaptasyon satış tarihine göre hesaplanacak.");
-    setOpen(false);
-  }
-
-  return (
-    <>
-      <button
-        type="button"
-        className="ui-button ui-button-ghost"
-        onClick={() => {
-          setDate(patient.adaptationStartManual ?? "");
-          setError(null);
-          setOpen(true);
-        }}
-      >
-        ✎ Adaptasyon tarihi
-      </button>
-      <Modal
-        open={open}
-        onClose={() => setOpen(false)}
-        eyebrow={patient.name}
-        title="Adaptasyon başlangıcı"
-        size="sm"
-        footer={
-          <>
-            <button type="button" className="ui-button ui-button-ghost" onClick={() => setOpen(false)}>
-              Vazgeç
-            </button>
-            <button type="submit" form="patient-adaptation-form" className="ui-button ui-button-primary" disabled={busy}>
-              {busy ? "Bekleyin…" : "Kaydet"}
-            </button>
-          </>
-        }
-      >
-        <form id="patient-adaptation-form" className="ui-stack" onSubmit={save} noValidate>
-          <p className="patients-hint">
-            Satış yapıldığında adaptasyon cihaz satış tarihinden başlar. Farklı bir tarih gerekiyorsa buraya yazın; boş
-            bırakırsanız satış tarihi kullanılır.
-          </p>
-          <label className="ui-field" htmlFor="adaptation-start">
-            <span className="ui-label">Başlangıç tarihi</span>
-            <input id="adaptation-start" className="ui-input" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-          </label>
-          {date && (
-            <button type="button" className="patients-link-button" onClick={() => setDate("")}>
-              Tarihi temizle (satış tarihini kullan)
-            </button>
-          )}
           {error && (
             <p className="ui-error" role="alert">
               {error}

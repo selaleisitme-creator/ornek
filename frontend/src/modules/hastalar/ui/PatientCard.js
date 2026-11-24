@@ -4,8 +4,8 @@ import { formatDate, formatDateTime } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 import { earSideLabel, initials } from "../patientRules";
 import PatientStatus from "./PatientStatus";
+import DeviceEditButton from "./DeviceEditButton";
 import {
-  AdaptationButton,
   EditPatientButton,
   NationalIdValue,
   NoteButton,
@@ -123,7 +123,11 @@ function DeviceSection({ card, person }) {
         title={<span id="patients-devices">Cihaz ve takip bilgileri</span>}
         description="Cihazlar satış kaydından gelir; adaptasyon cihaz satış tarihinden itibaren 45 gündür."
       >
-        <AdaptationButton patient={person} />
+        <DeviceEditButton
+          patient={{ id: person.id, name: person.name, candidate: card.candidate, adaptationStartManual: card.adaptationStartManual }}
+          devices={card.currentDevices}
+          statusText={card.statusText}
+        />
       </SectionHead>
 
       <div className="patients-current">

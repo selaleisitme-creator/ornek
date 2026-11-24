@@ -1,0 +1,35 @@
+/* "Cihaz ve takip bilgileri" window (PatientDeviceDialog). Kept apart from patients.css so the two can change
+   independently; colours come from the shared tokens in shared/ui/ui.css. */
+
+.device-dialog { display: grid; gap: 14px; }
+.device-note {
+  margin: 0; padding: 10px 12px; border: 1px solid var(--ui-cream-line); border-radius: 10px;
+  background: var(--ui-cream); color: var(--ui-ink); font-size: 13px;
+}
+.device-panel { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--ui-line); border-radius: 12px; background: var(--ui-soft); }
+.device-panel.ears { background: color-mix(in srgb, var(--ui-ok) 6%, #fff); border-color: color-mix(in srgb, var(--ui-ok) 25%, #fff); }
+.device-panel.dates { background: color-mix(in srgb, var(--ui-cream) 50%, #fff); border-color: var(--ui-cream-line); }
+.device-panel h3 { margin: 0; color: var(--ui-blue); font-size: 14px; font-weight: 700; }
+.device-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+.device-row {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px;
+  padding: 10px 12px; border: 1px solid var(--ui-line); border-radius: 10px; background: #fff;
+}
+.device-row b { display: block; color: var(--ui-ink); font-size: 14px; }
+.device-row small { color: var(--ui-muted); font-size: 12.5px; }
+.device-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.device-muted { margin: 0; color: var(--ui-muted); font-size: 13px; }
+.device-link { padding: 0; border: 0; background: none; color: var(--ui-blue); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; justify-self: start; }
+.device-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.device-form { display: grid; gap: 12px; }
+.device-form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+.device-found { margin: 0; padding: 8px 10px; border-radius: 8px; font-size: 13px; }
+.device-found.ok { background: color-mix(in srgb, var(--ui-ok) 10%, #fff); color: var(--ui-ok); }
+.device-found.new { background: var(--ui-cream); color: var(--ui-warn); }
+.device-radios { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0; padding: 0; border: 0; }
+.device-radios legend { margin-bottom: 6px; padding: 0; color: var(--ui-ink); font-size: 13px; font-weight: 600; }
+.device-radios label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+
+@media (max-width: 600px) {
+  .device-grid { grid-template-columns: minmax(0, 1fr); }
+}
