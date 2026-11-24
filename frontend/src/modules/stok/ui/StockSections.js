@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { STOCK_SECTIONS } from "../stockRules";
 
-// The design's dark segmented switch ("Mevcut stok · Servis"). A section change drops the stock-only
+// The design's dark segmented switch ("Mevcut stok · Satılan ürünler · Servis"). A section change drops the stock-only
 // options (group, brand, search, open model), so "Servis" never carries a half-applied stock filter.
 export default function StockSections() {
   const pathname = usePathname();
@@ -22,12 +22,6 @@ export default function StockSections() {
             <Link href={href} scroll={false} className={active ? "on" : undefined} aria-current={active ? "page" : undefined}>
               {section.label}
             </Link>
-            {/* The design's middle tab. Sales arrive in Faz 2, so it is visible but cannot be chosen yet. */}
-            {index === 0 && (
-              <span className="stock-section-later" aria-disabled="true" title="Satılan ürünler, satışlarla birlikte (Faz 2) gelecek.">
-                Satılan ürünler
-              </span>
-            )}
           </Fragment>
         );
       })}

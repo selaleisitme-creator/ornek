@@ -169,9 +169,10 @@ export function receiptLabel(unit) {
 // Address bar
 // ---------------------------------------------------------------------------
 
-// The page's two sections (?sekme=). The first is the default and stays out of the address.
+// The page's sections (?sekme=). The first is the default and stays out of the address.
 export const STOCK_SECTIONS = [
   { value: "stok", label: "Mevcut stok" },
+  { value: "satilan", label: "Satılan ürünler" },
   { value: "servis", label: "Servis" },
 ];
 

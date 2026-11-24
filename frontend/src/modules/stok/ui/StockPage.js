@@ -16,9 +16,10 @@ import StockAlerts from "./StockAlerts";
 import ProductGroupList from "./ProductGroupList";
 import PriceUndoBar from "./PriceUndoBar";
 import ServiceCatalog from "./ServiceCatalog";
+import SoldItemsList from "@/modules/satis/ui/SoldItemsList";
 import "./stock.css";
 
-// Stok: "Mevcut stok" (default) and "Servis" (?sekme=servis). Everything that changes the view lives in the
+// Stok: "Mevcut stok" (default), "Satılan ürünler" (?sekme=satilan) and "Servis" (?sekme=servis). Everything that changes the view lives in the
 // address bar (?sekme, ?grup, ?marka, ?ara, ?gorunum, ?ac), so a refresh or a shared link shows the same thing.
 // Each section loads only its own data.
 // The screen-reader heading shows at once; everything that reads the address bar or the database streams in
@@ -40,6 +41,7 @@ async function StockContent({ searchParams }) {
   // Dates on this page ("today", price batch times) read the clock; with cacheComponents that must happen at
   // request time, not during prerender (CLAUDE.md: io() before server code that reads time).
   await io();
+  if (query.sekme === "satilan") return <SoldItemsList search={query.ara} openId={query.ac} />;
   return query.sekme === "servis" ? (
     <>
       <div className="stock-toolbar stock-toolbar-plain">
