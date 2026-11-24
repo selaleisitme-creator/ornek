@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { formatPhone } from "@/lib/phone";
 import { useWhatsAppLink } from "@/modules/shared/ui/useWhatsAppLink";
 
 // One patient inside a suggestion: name, why they are listed, and the next step. The WhatsApp button only
@@ -15,7 +16,8 @@ export default function SuggestionPatient({ patient }) {
         <b>{patient.name}</b>
         <span>
           {patient.note}
-          {patient.phone ? ` · ${patient.phone}` : ""}
+          {/* Shown as on the patient list ("+90 555 000 00 21"); the WhatsApp link above keeps the stored form. */}
+          {patient.phone ? ` · ${formatPhone(patient.phone)}` : ""}
         </span>
       </div>
       <div className="home-patient-actions">
