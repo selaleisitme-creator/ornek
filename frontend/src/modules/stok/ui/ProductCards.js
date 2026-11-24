@@ -55,6 +55,7 @@ export default function ProductCards({ models, openProductId, hrefFor, editFor }
               <span className="stock-code">{model.gtin || "—"}</span>
               <small className="stock-serial">{serialPreview({ firstSerial: model.firstSerial, unitCount: model.shelfCount })}</small>
               <span className="stock-price">{formatMoney(model.salePrice)}</span>
+              <small className="stock-muted">Toptan: {formatMoney(model.wholesalePrice)}</small>
               <span className="stock-row-actions">
                 <DetailsToggle href={hrefFor(model)} open={open} />
                 {editFor?.(model)}

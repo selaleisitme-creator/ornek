@@ -50,6 +50,10 @@ function UnitPanel({ model, units }) {
             <small>Satış fiyatı</small>
             <b>{formatMoney(model.salePrice)}</b>
           </span>
+          <span className="stock-panel-price">
+            <small>Toptan fiyatı</small>
+            <b>{formatMoney(model.wholesalePrice)}</b>
+          </span>
           <StockRemoveButton model={forDialog} units={units} />
         </div>
       </div>
@@ -62,6 +66,7 @@ function UnitPanel({ model, units }) {
                 <th scope="col">Seri no</th>
                 <th scope="col">Sağ / Sol</th>
                 <th scope="col" className="ui-end">Satış fiyatı</th>
+                <th scope="col" className="ui-end">Toptan fiyatı</th>
                 <th scope="col" className="ui-end">Alış fiyatı</th>
                 <th scope="col">Ambalaj barkodu</th>
                 <th scope="col">ÜRT tarihi</th>
@@ -77,6 +82,7 @@ function UnitPanel({ model, units }) {
                   <td className="stock-code">{unit.serialNo ?? `${unit.count} adet`}</td>
                   <td><SideChip side={unit.earSide} /></td>
                   <td className="ui-end">{formatMoney(model.salePrice)}</td>
+                  <td className="ui-end">{formatMoney(model.wholesalePrice)}</td>
                   <td className="ui-end">{formatMoney(unit.purchasePrice)}</td>
                   <td className="stock-code">{model.packageBarcode || "—"}</td>
                   <td>{formatDate(unit.productionDate)}</td>

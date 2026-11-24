@@ -41,6 +41,13 @@ function NewModelForm({ draft, setDraft, brands, onBrandAdded }) {
       <TextField id="entry-name" label="Model adı" value={draft.name} onChange={set("name")} maxLength={120} required />
       <TextField id="entry-type" label="Tip / varyant (isteğe bağlı)" value={draft.type} onChange={set("type")} maxLength={120} />
       <MoneyInput id="entry-sale-price" label="Satış fiyatı" defaultValue={draft.salePrice} onChange={set("salePrice")} required />
+      <MoneyInput
+        id="entry-wholesale-price"
+        label="Toptan satış fiyatı"
+        defaultValue={draft.wholesalePrice}
+        onChange={set("wholesalePrice")}
+        required
+      />
       <TextField id="entry-gtin" label="GTIN (isteğe bağlı)" value={draft.gtin} onChange={set("gtin")} inputMode="numeric" maxLength={20} />
       <TextField id="entry-package" label="Ambalaj barkodu (isteğe bağlı)" value={draft.packageBarcode} onChange={set("packageBarcode")} maxLength={60} />
       <TextField id="entry-ref" label="Üretici REF (isteğe bağlı)" value={draft.manufacturerRef} onChange={set("manufacturerRef")} maxLength={60} />

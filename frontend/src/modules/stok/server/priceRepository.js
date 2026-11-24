@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
-// Bulk sale prices: the two RPCs and the reads behind the "Fiyat güncelle" window and the undo strip.
+// Bulk sale and wholesale prices: the two RPCs and the reads behind the "Fiyat güncelle" window and the undo strip.
 // Run as the signed-in user, so RLS (active staff at aal2) applies; price_changes is written only by triggers.
 
 function check({ data, error }) {
@@ -9,7 +9,10 @@ function check({ data, error }) {
   return data ?? [];
 }
 
-const MODEL_COLUMNS = "id, name, category, sale_price, gtin, active, brands(name)";
+// The price_changes fields update_prices_bulk writes; purchase prices are never changed in bulk.
+const BULK_FIELDS = ["sale", "wholesale"];
+
+const MODEL_COLUMNS = "id, name, category, sale_price, wholesale_price, gtin, active, brands(name)";
 
 // Every active model of every group, for the picker. Sorted by brand in the service: PostgREST cannot order
 // the parent rows by a column of the embedded brand.
@@ -25,14 +28,15 @@ export async function listModelsByIds(ids) {
   return check(await supabase.from("products").select(MODEL_COLUMNS).in("id", ids));
 }
 
-// One batch id for all changes, or null when no price would change (010_stock_screen.sql).
-export async function updatePricesBulk({ productIds, mode, value, roundTo }) {
+// One batch id for all changes, or null when no price would change (010, 012_wholesale_price.sql).
+export async function updatePricesBulk({ productIds, mode, value, roundTo, field }) {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("update_prices_bulk", {
     p_product_ids: productIds,
     p_mode: mode,
     p_value: value,
     p_round_to: roundTo,
+    p_field: field,
   });
   if (error) throw error;
   return data ?? null;
@@ -46,16 +50,16 @@ export async function undoPriceBatch(batchId) {
   return data;
 }
 
-// The newest model sale price change that belongs to a batch. Single edits ("Model düzenle") and service
-// prices have no batch or no product, so they never show up here.
+// The newest model sale or wholesale price change that belongs to a batch. Single edits ("Model düzenle") and
+// service prices have no batch or no product, so they never show up here.
 export async function getLatestProductBatch() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("price_changes")
-    .select("batch_id, changed_at")
+    .select("batch_id, changed_at, price_field")
     .not("batch_id", "is", null)
     .not("product_id", "is", null)
-    .eq("price_field", "sale")
+    .in("price_field", BULK_FIELDS)
     .order("changed_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(1)
@@ -73,7 +77,7 @@ export async function listBatchProducts(batchId) {
       .select("product_id, products(name, brands(name))")
       .eq("batch_id", batchId)
       .not("product_id", "is", null)
-      .eq("price_field", "sale")
+      .in("price_field", BULK_FIELDS)
       .order("id")
   );
 }

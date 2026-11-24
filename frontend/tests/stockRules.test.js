@@ -35,6 +35,7 @@ import {
   entryError,
   buildStockEntryArgs,
   modelFieldsError,
+  modelPrice,
   buildModelUpdate,
   serialRuleWarning,
   buildUnitUpdate,
@@ -91,13 +92,16 @@ describe("stock entry rules", () => {
     expect(serialPolicyLabel("optional")).toBe("İsteğe bağlı");
   });
 
-  const goodModel = { brandId: 3, category: "device", name: "Viron 9", salePrice: 45000, serialPolicy: "required" };
+  const goodModel = { brandId: 3, category: "device", name: "Viron 9", salePrice: 45000, wholesalePrice: 38000, serialPolicy: "required" };
 
   it("checks a new model", () => {
     expect(newModelError(goodModel)).toBeNull();
     expect(newModelError({ ...goodModel, brandId: null })).toMatch(/Marka/);
     expect(newModelError({ ...goodModel, name: "  " })).toMatch(/Model adı/);
     expect(newModelError({ ...goodModel, salePrice: 0 })).toMatch(/Satış fiyatı/);
+    // A new model needs its wholesale price (design); editing an old model does not (see "model editing").
+    expect(newModelError({ ...goodModel, wholesalePrice: null })).toMatch(/Toptan satış fiyatı/);
+    expect(newModelError({ ...goodModel, wholesalePrice: 0 })).toMatch(/Toptan satış fiyatı/);
     expect(newModelError({ ...goodModel, gtin: "12" })).toMatch(/GTIN/);
     expect(newModelError({ ...goodModel, category: "battery" })).toMatch(/pil adedini/);
     expect(newModelError({ ...goodModel, category: "battery", packSize: 6 })).toBeNull();
@@ -133,6 +137,7 @@ describe("stock entry rules", () => {
     );
     expect(built.error).toBeUndefined();
     expect(built.args.product).toMatchObject({ brand_id: 3, category: "device", gtin: "5714464091134", unit: "piece", purchase_price: 15000.01, warranty_months: 24, min_stock: 0, serial_policy: "required" });
+    expect(built.args.product).toMatchObject({ sale_price: 45000, wholesale_price: 38000 });
     expect(built.args.receipt).toEqual({
       opening: false, supplier_id: 5, received_on: "2026-11-14", invoice_no: "F-123", payment_method: "transfer", note: null, price_mode: "total", amount: 30000.01,
     });
@@ -431,7 +436,7 @@ describe("bulk price rules", () => {
       [2, 40, 0, "bad"], // 35.2 rounds to 0 at 100 TL
       [3, 19800, 17400, "ok"],
     ]);
-    expect(counts).toEqual({ total: 3, ok: 2, same: 0, bad: 1 });
+    expect(counts).toEqual({ total: 3, ok: 2, same: 0, bad: 1, missing: 0 });
 
     const same = previewPriceChange([models[2]], { mode: "set", value: 19800 });
     expect(same.rows[0].status).toBe("same");
@@ -439,7 +444,31 @@ describe("bulk price rules", () => {
 
     const pending = previewPriceChange(models, { mode: "percent", value: null, roundTo: 0 });
     expect(pending.rows.every((row) => row.newPrice === null && row.status === null)).toBe(true);
-    expect(pending.counts).toEqual({ total: 3, ok: 0, same: 0, bad: 0 });
+    expect(pending.counts).toEqual({ total: 3, ok: 0, same: 0, bad: 0, missing: 0 });
+  });
+
+  it("previews the wholesale price, and a model without one only takes a new price", () => {
+    const models = [
+      { id: 1, brandName: "Bernafon", name: "Alpha 5", salePrice: 18500, wholesalePrice: "15000.00" },
+      { id: 2, brandName: "Bernafon", name: "Alpha 3", salePrice: 16000, wholesalePrice: null },
+    ];
+    const percent = previewPriceChange(models, { mode: "percent", value: 10, roundTo: 0, field: "wholesale" });
+    expect(percent.rows.map((row) => [row.productId, row.oldPrice, row.newPrice, row.status])).toEqual([
+      [1, 15000, 16500, "ok"],
+      [2, null, null, "missing"],
+    ]);
+    expect(percent.counts).toEqual({ total: 2, ok: 1, same: 0, bad: 0, missing: 1 });
+
+    const set = previewPriceChange(models, { mode: "set", value: 14000, field: "wholesale" });
+    expect(set.rows.map((row) => [row.oldPrice, row.newPrice, row.status])).toEqual([
+      [15000, 14000, "ok"],
+      [null, 14000, "ok"],
+    ]);
+
+    // Without a field the sale price is previewed, as before.
+    expect(previewPriceChange(models, { mode: "percent", value: 10, roundTo: 0 }).rows[1].oldPrice).toBe(16000);
+    expect(modelPrice(models[0], "wholesale")).toBe(15000);
+    expect(modelPrice(models[1], "wholesale")).toBeNull();
   });
 
   it("reads the value box", () => {
@@ -464,8 +493,10 @@ describe("bulk price rules", () => {
     expect(priceChangeError({ mode: "percent", value: 7.5, roundTo: 10 })).toBeNull();
 
     expect(buildBulkPriceArgs({ productIds: [3, "3", 5], mode: "percent", value: 7.5, roundTo: "10" })).toEqual({
-      args: { productIds: [3, 5], mode: "percent", value: 7.5, roundTo: 10 },
+      args: { productIds: [3, 5], mode: "percent", value: 7.5, roundTo: 10, field: "sale" },
     });
+    expect(buildBulkPriceArgs({ productIds: [1], mode: "set", value: 100, field: "wholesale" }).args.field).toBe("wholesale");
+    expect(buildBulkPriceArgs({ productIds: [1], mode: "set", value: 100, field: "purchase" }).error).toMatch(/toptan/);
     expect(buildBulkPriceArgs({ productIds: [1], mode: "set", value: 100, roundTo: 100 }).args.roundTo).toBe(0);
     expect(buildBulkPriceArgs({ productIds: [], mode: "set", value: 100 }).error).toMatch(/modelleri seçin/);
     expect(buildBulkPriceArgs({ productIds: [1, "x"], mode: "set", value: 100 }).error).toMatch(/modelleri seçin/);
@@ -474,6 +505,9 @@ describe("bulk price rules", () => {
   it("labels the last batch", () => {
     expect(priceBatchLabel({ changedAtText: "14.11.2026 15:10", count: 5, names: ["Alpha 5", "Alpha 3"] })).toBe(
       "Son fiyat güncellemesi: 14.11.2026 15:10 · 5 model (Alpha 5, Alpha 3 …)"
+    );
+    expect(priceBatchLabel({ changedAtText: "14.11.2026 15:10", count: 1, names: ["Alpha 5"], field: "wholesale" })).toBe(
+      "Son toptan fiyat güncellemesi: 14.11.2026 15:10 · 1 model (Alpha 5)"
     );
     expect(priceBatchLabel({ changedAtText: "14.11.2026 15:10", count: 1, names: ["Alpha 5"] })).toBe(
       "Son fiyat güncellemesi: 14.11.2026 15:10 · 1 model (Alpha 5)"
@@ -573,6 +607,7 @@ describe("model editing", () => {
       package_barcode: null,
       manufacturer_ref: "REF-1",
       sale_price: 45000.46,
+      wholesale_price: null,
       warranty_months: 24,
       min_stock: 0,
       serial_policy: "required",
@@ -584,6 +619,12 @@ describe("model editing", () => {
     const { values } = buildModelUpdate({ ...model, packSize: "6", packsPerBox: "10", boxesPerCarton: "" }, { category: "battery" });
     expect(values).toMatchObject({ pack_size: 6, packs_per_box: 10, boxes_per_carton: null });
     expect(buildModelUpdate({ ...model, salePrice: null }, { category: "device" }).error).toMatch(/Satış fiyatı/);
+  });
+
+  it("keeps the wholesale price optional when editing, but positive when given", () => {
+    expect(buildModelUpdate({ ...model, wholesalePrice: 39000.5 }, { category: "device" }).values.wholesale_price).toBe(39000.5);
+    expect(buildModelUpdate({ ...model, wholesalePrice: "" }, { category: "device" }).values.wholesale_price).toBeNull();
+    expect(buildModelUpdate({ ...model, wholesalePrice: 0 }, { category: "device" }).error).toMatch(/Toptan satış fiyatı/);
   });
 
   it("warns only when the rule becomes Zorunlu and shelf units lack a serial", () => {
