@@ -111,7 +111,13 @@ function SaleRow({ row }) {
     <li className="home-history-row">
       <span className="home-history-date">{formatDate(row.date)}</span>
       <div className="home-history-main">
-        <b>{row.title}</b>
+        {row.href ? (
+          <Link href={row.href} className="home-history-link">
+            {row.title}
+          </Link>
+        ) : (
+          <b>{row.title}</b>
+        )}
         {row.serialNo && <small>Seri no · {row.serialNo}</small>}
       </div>
       <span className={`home-history-tag${row.refunded ? " refunded" : ""}`}>
