@@ -30,11 +30,11 @@ export function SoldItemActions({ item, methods }) {
 
 // The toolbar's "İade al": the item is found by scanning or picked from the list first (the design's
 // "İade: ürünü belirleyin").
-export function RefundButton({ items, methods }) {
+export function RefundButton({ items, methods, className = "ui-button ui-button-ghost" }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className="ui-button ui-button-ghost" onClick={() => setOpen(true)} disabled={!items.length}>↩ İade al</button>
+      <button type="button" className={className} onClick={() => setOpen(true)} disabled={!items.length}>↩ İade al</button>
       {open && <RefundDialog items={items} methods={methods} onClose={() => setOpen(false)} />}
     </>
   );

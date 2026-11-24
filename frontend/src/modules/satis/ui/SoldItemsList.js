@@ -23,16 +23,18 @@ export default async function SoldItemsList({ search, openId }) {
 
   return (
     <>
-      <div className="stock-toolbar stock-toolbar-plain sold-toolbar">
-        <StockSections />
-        <form action="/stok" method="get" className="sold-search" role="search">
+      {/* Same card as Mevcut stok's toolbar: search on the left, the section switch and the buttons on the right. */}
+      <div className="stock-toolbar sold-toolbar">
+        <form action="/stok" method="get" className="stock-search sold-search" role="search">
           <input type="hidden" name="sekme" value="satilan" />
           <input className="ui-input" type="search" name="ara" defaultValue={search ?? ""} placeholder="Ürün, seri no, hasta ya da satış no ara…" aria-label="Satılan ürünlerde ara" />
-          <button type="submit" className="ui-button ui-button-ghost">Ara</button>
-          {search && <Link href="/stok?sekme=satilan" className="sale-link">Temizle</Link>}
+          {search && <Link href="/stok?sekme=satilan" className="sale-link">Aramayı temizle ×</Link>}
         </form>
-        <WholesaleSaleButton />
-        <RefundButton items={refundable} methods={methods} />
+        <div className="stock-toolbar-filters">
+          <StockSections />
+          <WholesaleSaleButton className="stock-price-button" />
+          <RefundButton items={refundable} methods={methods} className="stock-price-button" />
+        </div>
       </div>
 
       {items.length === 0 ? (

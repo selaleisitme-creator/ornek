@@ -53,9 +53,16 @@ button.sale-row { cursor: pointer; }
 }
 
 /* Stok > Satılan ürünler */
-.sold-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
-.sold-search { display: flex; flex: 1 1 320px; flex-wrap: wrap; align-items: center; gap: 8px; }
-.sold-search .ui-input { flex: 1 1 220px; }
+/* Mevcut stok's toolbar grid (stock.css) without the view switch and the bottom action row. */
+.stock-toolbar.sold-toolbar { grid-template-columns: minmax(185px, 278px) minmax(0, 1fr) auto; grid-template-areas: "search . filters"; }
+.sold-search .ui-input {
+  min-height: 48px; border-color: #91a4bf; border-radius: 13px; font-size: 13px;
+  box-shadow: 0 2px 5px rgba(24, 50, 68, .04), 0 8px 20px rgba(24, 50, 68, .043);
+}
+.stock-price-button:disabled { opacity: .55; cursor: not-allowed; }
+@container stock-page (max-width: 1000px) {
+  .stock-toolbar.sold-toolbar { grid-template-columns: minmax(0, 1fr); grid-template-areas: "search" "filters"; }
+}
 .sold-scroll { overflow-x: auto; border: 1px solid var(--ui-line); border-radius: 12px; background: #fff; }
 .sold-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .sold-table th { padding: 10px 12px; border-bottom: 1px solid var(--ui-line); color: var(--ui-muted); font-size: 12px; text-align: left; white-space: nowrap; }
