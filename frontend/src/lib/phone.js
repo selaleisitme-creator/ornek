@@ -38,3 +38,11 @@ export function formatPhone(phone) {
   const match = /^\+90(\d{3})(\d{3})(\d{2})(\d{2})$/.exec(phone);
   return match ? `+90 ${match[1]} ${match[2]} ${match[3]} ${match[4]}` : phone;
 }
+
+// "+905321234567" → { defaultCountry: "+90", defaultNumber: "5321234567" }, so a PhoneInput shown again (a wizard step
+// re-opened) starts from the number already entered. An empty or unknown value starts empty on +90.
+export function splitPhone(phone) {
+  const country = phone ? COUNTRY_CODES.find((option) => phone.startsWith(option.code)) : null;
+  if (!country) return { defaultCountry: "+90", defaultNumber: "" };
+  return { defaultCountry: country.code, defaultNumber: phone.slice(country.code.length) };
+}

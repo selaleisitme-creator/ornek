@@ -1,7 +1,9 @@
 "use client";
 
 import MoneyInput from "@/modules/shared/ui/MoneyInput";
+import PhoneInput from "@/modules/shared/ui/PhoneInput";
 import { formatMoney } from "@/lib/money";
+import { splitPhone } from "@/lib/phone";
 import { TAX_RATES, cartTotals, isEarDevice, paymentSummary, taxLocked } from "../saleRules";
 
 const SIDES = [
@@ -37,10 +39,13 @@ export default function SaleCartStep({ catalog, wholesale, lines, setLines, sale
             <span className="ui-label">Alıcı (işitme merkezi)</span>
             <input id="sale-customer" className="ui-input" maxLength={160} value={sale.customerName} onChange={(event) => setSale((current) => ({ ...current, customerName: event.target.value }))} />
           </label>
-          <label className="ui-field" htmlFor="sale-customer-phone">
-            <span className="ui-label">Telefon (isteğe bağlı)</span>
-            <input id="sale-customer-phone" className="ui-input" inputMode="tel" maxLength={20} value={sale.customerPhone} onChange={(event) => setSale((current) => ({ ...current, customerPhone: event.target.value }))} />
-          </label>
+          {/* Same "+90…" shape as patients' phones: the ledger shows both in one column. */}
+          <PhoneInput
+            id="sale-customer-phone"
+            label="Telefon (isteğe bağlı)"
+            {...splitPhone(sale.customerPhone)}
+            onChange={(customerPhone) => setSale((current) => ({ ...current, customerPhone: customerPhone ?? "" }))}
+          />
         </div>
       )}
 

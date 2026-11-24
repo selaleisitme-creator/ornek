@@ -8,6 +8,7 @@ import { scanToSearchText } from "../stockRules";
 import StockEntryButton from "./StockEntryButton";
 import StockSections from "./StockSections";
 import { PriceUpdateButton, StockRemoveButton } from "./StockActionButtons";
+import { WholesaleSaleButton } from "@/modules/satis/ui/SaleButtons";
 
 // The design's toolbar card: search on top (with the two scan shortcuts), then the section switch with
 // "Fiyat güncelle" and the table/card switch, then "Stok ekle" and "Stok sil" on the right. A scanner (or
@@ -61,6 +62,7 @@ export default function StockToolbar({ searchText, clearHref, entryOptions, remo
       <div className="stock-toolbar-filters">
         <StockSections />
         <PriceUpdateButton className="stock-price-button" />
+        <WholesaleSaleButton className="stock-price-button" />
       </div>
 
       <div className="stock-view-switch" role="group" aria-label="Görünüm">
