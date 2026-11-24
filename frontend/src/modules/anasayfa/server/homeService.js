@@ -389,6 +389,8 @@ export async function getSoldItems() {
     id: row.sale_item_id,
     date: row.sale_date,
     title: row.device?.trim() ? row.device : row.operation,
+    // Goods (a stock unit) open in Stok > Satılan ürünler, framed in blue; services are not listed there.
+    href: row.device?.trim() ? `/stok?sekme=satilan&ac=${row.sale_item_id}#sold-${row.sale_item_id}` : null,
     serialNo: row.serial_no,
     amount: Number(row.net_value) || 0,
     refunded: row.refunded,
