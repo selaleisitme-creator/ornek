@@ -185,7 +185,7 @@ function DeviceSection({ card, person }) {
 function SalesSection({ sales, patientId }) {
   return (
     <section className="patients-section" aria-labelledby="patients-sales">
-      <SectionHead title={<span id="patients-sales">Satış geçmişi</span>} description="Bu hastaya kaydedilen ürün ve hizmetler. Önceki satışlar silinmeden kalır.">
+      <SectionHead title={<span id="patients-sales">Hasta geçmişi</span>} description="Bu hastaya kaydedilen ürün ve hizmetler. Önceki satışlar silinmeden kalır.">
         <span className="patients-pill">{sales.length} işlem</span>
       </SectionHead>
 
