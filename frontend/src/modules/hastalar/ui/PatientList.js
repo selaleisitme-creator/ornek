@@ -61,7 +61,7 @@ function Person({ row }) {
 function PatientTable({ query, rows, candidates }) {
   const columns = [
     { key: "name", label: candidates ? "Randevu adayı" : "Hasta", render: (row) => <Person row={row} /> },
-    { key: "phone", label: "Telefon" },
+    { key: "phone", label: "Telefon", render: (row) => <span className="patients-phone">{row.phone ?? "—"}</span> },
     candidates
       ? { key: "appointment", label: "Randevu", render: appointmentText }
       : { key: "devices", label: "Kullanılan cihaz", render: (row) => row.devices ?? "Henüz atanmadı" },

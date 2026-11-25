@@ -121,7 +121,7 @@ function SoldRow({ item, open, methods, search }) {
             {item.wholesale && !item.refunded && (
               <div className="sold-detail-actions">
                 <SaleFollowupButton saleId={item.saleId} patientId={null} />
-                <PaymentButton saleId={item.saleId} patientId={null} />
+                {item.owed && <PaymentButton saleId={item.saleId} patientId={null} />}
               </div>
             )}
           </td>
