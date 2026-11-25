@@ -17,10 +17,10 @@ export function SoldItemActions({ item, methods }) {
   return (
     <>
       {!item.refunded && item.isDevice && (
-        <button type="button" className="sale-link" onClick={() => setOpen("info")}>Bilgiler</button>
+        <button type="button" className="sold-action" onClick={() => setOpen("info")}>Bilgiler</button>
       )}
       {!item.refunded && (
-        <button type="button" className="sale-link" onClick={() => setOpen("refund")}>İade al</button>
+        <button type="button" className="sold-action sold-action-danger" onClick={() => setOpen("refund")}>İade al</button>
       )}
       {open === "info" && <SoldInfoDialog item={item} onClose={() => setOpen(null)} />}
       {open === "refund" && <RefundDialog item={item} methods={methods} onClose={() => setOpen(null)} />}

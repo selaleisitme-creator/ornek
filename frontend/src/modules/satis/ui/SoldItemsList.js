@@ -72,14 +72,14 @@ function SoldRow({ item, open, methods, search }) {
   return (
     <>
       <tr id={`sold-${item.saleItemId}`} className={open ? "sold-open" : undefined}>
-        <td>{formatDate(item.saleDate)}</td>
+        <td className="sold-num">{formatDate(item.saleDate)}</td>
         <td>
           <b>{item.product}</b>
           <small className="sale-muted"> {item.saleNo}{item.wholesale ? " · toptan" : ""}</small>
         </td>
-        <td className="stock-code">{item.serial ?? "—"}</td>
+        <td className="stock-code sold-serial">{item.serial ?? "—"}</td>
         <td>{item.patientId ? <Link href={`/hastalar?ac=${item.patientId}`}>{item.buyer}</Link> : (item.buyer ?? "—")}</td>
-        <td className="ui-end">{formatMoney(item.value)}</td>
+        <td className="ui-end sold-num">{formatMoney(item.value)}</td>
         <td>{item.paymentText ?? "—"}</td>
         <td>
           {item.refunded ? (
@@ -92,7 +92,9 @@ function SoldRow({ item, open, methods, search }) {
         </td>
         <td>
           <span className="sold-actions">
-            <Link href={detailsHref} scroll={false} className="sale-link">{open ? "Kapat" : "Ayrıntı"}</Link>
+            <Link href={detailsHref} scroll={false} className={`sold-action sold-action-main${open ? " on" : ""}`} aria-expanded={open}>
+              {open ? "Kapat" : "Ayrıntı"}
+            </Link>
             <SoldItemActions item={item} methods={methods} />
           </span>
         </td>
@@ -117,10 +119,10 @@ function SoldRow({ item, open, methods, search }) {
             </dl>
             {/* A wholesale sale has no patient card, so its invoice, ÜTS and later payments are completed here. */}
             {item.wholesale && !item.refunded && (
-              <p className="sold-actions">
+              <div className="sold-detail-actions">
                 <SaleFollowupButton saleId={item.saleId} patientId={null} />
                 <PaymentButton saleId={item.saleId} patientId={null} />
-              </p>
+              </div>
             )}
           </td>
         </tr>
