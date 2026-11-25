@@ -168,6 +168,24 @@ export async function updateReferralSource(id, fields) {
   if (error) throw error;
 }
 
+// Every source, removed ones included: a removed name still holds its place in the unique index.
+export async function listAllReferralSourceNames() {
+  const supabase = await createClient();
+  return check(await supabase.from("referral_sources").select("id, name, active"));
+}
+
+export async function reactivateReferralSource(id, name) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("referral_sources")
+    .update({ name, active: true, visible: true })
+    .eq("id", id)
+    .select("id, name, visible")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function insertReferralSource(name, sortOrder) {
   const supabase = await createClient();
   const { data, error } = await supabase

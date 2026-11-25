@@ -418,10 +418,20 @@ export async function setReferralVisibility(changes) {
   }
 }
 
+// Same rule as the unique index referral_sources_name_key: lower(btrim(name)).
+function sameSourceName(a, b) {
+  return String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
+}
+
 export async function addReferralSource(name) {
   const clean = String(name ?? "").trim().replace(/\s+/g, " ");
   if (!clean) throw new ValidationError("Kaynak adını yazın.");
   if (clean.length > 40) throw new ValidationError("Kaynak adı en fazla 40 karakter olabilir.");
+  // "Kaldır" only hides a source (old appointments keep it), so adding the same name again brings that one back
+  // instead of hitting the unique name index.
+  const existing = (await repo.listAllReferralSourceNames()).find((row) => sameSourceName(row.name, clean));
+  if (existing?.active) throw new ValidationError("Bu kaynak zaten listede.");
+  if (existing) return repo.reactivateReferralSource(existing.id, clean);
   const sortOrder = (await repo.maxReferralSortOrder()) + 1;
   return repo.insertReferralSource(clean, sortOrder);
 }
