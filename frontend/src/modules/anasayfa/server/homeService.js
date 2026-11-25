@@ -16,6 +16,7 @@ import {
   isSgkInvoiceWindow,
   lastMonths,
   needsFollowUp,
+  needsMaintenanceContact,
   paymentShares,
   referralIcon,
   warrantyState,
@@ -116,9 +117,8 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
 
   const list = [];
 
-  // Maintenance: the device sale must be under 5 years old (plan 3.7).
   const fiveYearsAgo = addDays(today, -5 * 365);
-  const dueMaintenance = maintenance.filter((patient) => !patient.adaptation_start || patient.adaptation_start >= fiveYearsAgo);
+  const dueMaintenance = maintenance.filter((patient) => needsMaintenanceContact(patient, fiveYearsAgo));
   if (dueMaintenance.length) {
     list.push({
       id: "maintenance",
@@ -127,7 +127,7 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
       kind: "Hasta takibi",
       title: `${dueMaintenance.length} hasta için cihaz bakım iletişimi`,
       detail: "Bakım aralığı dolan aktif cihaz kullanıcıları. Mesajı siz gönderirsiniz; kayıtlar kendiliğinden değişmez.",
-      rule: "Koşul: Son \"Geldi\" randevusundan, son bakım iletişiminden ya da cihaz satışından bu yana bakım aralığı geçti.",
+      rule: "Koşul: Son \"Geldi\" randevusundan, son bakım iletişiminden ya da cihaz satışından bu yana bakım aralığı geçti ve bekleyen randevusu yok.",
       patients: dueMaintenance.map((patient) => ({
         ...patientRow(patient),
         note: `Bakım iletişimi zamanı${patient.devices ? ` · ${patient.devices}` : ""}`,

@@ -82,7 +82,7 @@ export async function countUnmarkedAppointments(dayStartIso, nowIso) {
   );
 }
 
-const OVERVIEW_COLUMNS = "patient_id, full_name, phone, devices, warranty_end, adaptation_start, status";
+const OVERVIEW_COLUMNS = "patient_id, full_name, phone, devices, warranty_end, adaptation_start, next_appointment, status";
 
 export async function listMaintenanceDue() {
   const supabase = await createClient();

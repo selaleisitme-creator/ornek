@@ -11,6 +11,7 @@ import {
   isTrackingExempt,
   lastMonths,
   needsFollowUp,
+  needsMaintenanceContact,
   paymentShares,
   referralIcon,
   warrantyState,
@@ -119,5 +120,19 @@ describe("isTrackingExempt", () => {
     expect(isTrackingExempt(" COSELGI ")).toBe(true);
     expect(isTrackingExempt("Bernafon")).toBe(false);
     expect(isTrackingExempt(null)).toBe(false);
+  });
+});
+
+describe("needsMaintenanceContact", () => {
+  const fiveYearsAgo = "2021-11-25";
+  it("lists a maintenance-due patient with no booked visit", () => {
+    expect(needsMaintenanceContact({ adaptation_start: "2025-10-25", next_appointment: null }, fiveYearsAgo)).toBe(true);
+    expect(needsMaintenanceContact({ adaptation_start: null }, fiveYearsAgo)).toBe(true);
+  });
+  it("skips a patient who already has a waiting appointment", () => {
+    expect(needsMaintenanceContact({ adaptation_start: "2025-10-25", next_appointment: "2026-11-27T07:00:00+00:00" }, fiveYearsAgo)).toBe(false);
+  });
+  it("skips a device sold more than five years ago", () => {
+    expect(needsMaintenanceContact({ adaptation_start: "2020-01-01", next_appointment: null }, fiveYearsAgo)).toBe(false);
   });
 });

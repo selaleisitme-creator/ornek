@@ -120,6 +120,14 @@ export const FOLLOW_UPS = {
   fortyFive: { from: 38, to: 52, coverFrom: 20, coverTo: 55 },
 };
 
+// "Cihaz bakım iletişimi": a maintenance-due patient is listed only while the device sale is under 5 years old (plan
+// 3.7) and no appointment is booked yet. Once a visit is waiting, the message has nothing left to ask for.
+//   patient: { adaptation_start, next_appointment }; fiveYearsAgo: "YYYY-MM-DD"
+export function needsMaintenanceContact(patient, fiveYearsAgo) {
+  if (patient?.next_appointment) return false;
+  return !patient?.adaptation_start || patient.adaptation_start >= fiveYearsAgo;
+}
+
 export function needsFollowUp(rule, saleDate, todayIso, appointmentDays) {
   const age = daysBetween(saleDate, todayIso);
   if (age < rule.from || age > rule.to) return false;
