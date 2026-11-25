@@ -71,4 +71,28 @@ button.sale-row { cursor: pointer; }
 .sold-details dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px 16px; margin: 0; }
 .sold-details dt { color: var(--ui-muted); font-size: 12px; }
 .sold-details dd { margin: 0; color: var(--ui-ink); font-weight: 600; }
-.sold-actions { display: inline-flex; flex-wrap: wrap; gap: 10px; white-space: nowrap; }
+/* Row actions: small bordered chips stacked to one width, so "Ayrıntı / Bilgiler / İade al" read as buttons and line up
+   from row to row instead of three underlined links. 32 px tall plus the 6 px gap keeps a usable touch target. */
+.sold-actions { display: inline-flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 92px; }
+.sold-action {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 5px 12px;
+  border: 1px solid var(--ui-line); border-radius: 8px; background: #fff; color: var(--ui-ink);
+  font: inherit; font-size: 13px; font-weight: 600; line-height: 1.2; white-space: nowrap; text-decoration: none; cursor: pointer;
+  box-shadow: 0 1px 2px rgba(23, 43, 77, .06);
+  transition-property: border-color, background-color, color, transform; transition-duration: 150ms; transition-timing-function: ease-out;
+}
+.sold-action:hover { border-color: var(--ui-blue); color: var(--ui-blue); }
+.sold-action:active { transform: scale(.96); }
+.sold-action:focus-visible { outline: 2px solid var(--ui-blue); outline-offset: 2px; }
+.sold-action-main { border-color: transparent; background: var(--ui-blue); color: #fff; }
+.sold-action-main:hover { border-color: transparent; background: var(--ui-blue-dark); color: #fff; }
+.sold-action-main.on { border-color: var(--ui-blue); background: #fff; color: var(--ui-blue); }
+.sold-action-danger { color: var(--ui-danger); }
+.sold-action-danger:hover { border-color: var(--ui-danger); color: var(--ui-danger); }
+@media (prefers-reduced-motion: reduce) { .sold-action:active { transform: none; } }
+
+/* The open row's own buttons sit under the details, split from them by a thin line. */
+.sold-detail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--ui-line); }
+.sold-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sold-serial { white-space: nowrap; }
+.sold-table td b { text-wrap: pretty; }
