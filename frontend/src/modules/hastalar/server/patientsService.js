@@ -85,11 +85,13 @@ export async function getPatientCard(id, staff) {
 
   const items = sales.flatMap((sale) => sale.sale_items ?? []);
   const deviceItemIds = items.filter((item) => item.stock_units?.products?.category === "device").map((item) => item.id);
-  const [values, replacements] = await Promise.all([
+  const [values, replacements, balances] = await Promise.all([
     repo.listItemValues(sales.map((sale) => sale.id)),
     repo.listReplacements(deviceItemIds),
+    repo.listSaleBalances(sales.map((sale) => sale.id)),
   ]);
   const valueOf = new Map(values.map((row) => [row.sale_item_id, Number(row.net_value)]));
+  const owedOn = new Set(balances.filter(isOwed).map((row) => row.sale_id));
 
   return {
     id: patient.id,
@@ -124,7 +126,7 @@ export async function getPatientCard(id, staff) {
     nextAppointment: overview?.next_appointment ?? null,
     lastContact: overview?.last_contact ?? null,
     notes: notes.map((note) => ({ id: note.id, title: note.title, body: note.body, notedOn: note.noted_on })),
-    sales: sales.map((sale) => toSaleView(sale, valueOf)),
+    sales: sales.map((sale) => ({ ...toSaleView(sale, valueOf), owed: owedOn.has(sale.id) })),
     deviceHistory: deviceHistory(sales, replacements),
     currentDevices: currentDevices(sales, replacements),
     referralSources,
@@ -143,6 +145,11 @@ function refundsOf(item) {
 }
 
 const CATEGORY_LABELS = { device: "İşitme cihazı", receiver: "Receiver", charger: "Şarj cihazı", battery: "Pil", dome: "Dome" };
+
+// A sale still owes money while the patient's share or the expected SGK payment is not fully paid.
+function isOwed(row) {
+  return Number(row.patient_remaining) > 0 || Number(row.sgk_remaining) > 0;
+}
 
 function toSaleView(sale, valueOf) {
   const items = (sale.sale_items ?? [])

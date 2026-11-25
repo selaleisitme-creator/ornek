@@ -229,7 +229,7 @@ function SalesSection({ sales, patientId }) {
               {!sale.legacy && (
                 <div className="sale-history-actions">
                   <SaleFollowupButton saleId={sale.id} patientId={patientId} />
-                  <PaymentButton saleId={sale.id} patientId={patientId} />
+                  {sale.owed && <PaymentButton saleId={sale.id} patientId={patientId} />}
                 </div>
               )}
             </li>

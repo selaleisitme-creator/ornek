@@ -55,10 +55,17 @@ async function withValues(rows) {
 // search: words (product, serial, buyer, sale number) or a scanned GS1 label (its serial).
 export async function listSoldItems({ search } = {}) {
   const rows = await repo.listSoldItems(SOLD_LIMIT);
-  const valueOf = await withValues(rows);
+  const wholesaleIds = [...new Set(rows.filter((row) => row.sales?.sale_kind === "wholesale").map((row) => row.sales.id))];
+  const [valueOf, balances] = await Promise.all([withValues(rows), repo.listSaleBalances(wholesaleIds)]);
+  // Only wholesale sales offer "Tahsilat ekle" here (a patient's sale has it on the patient card).
+  const owedOn = new Set(
+    balances.filter((row) => Number(row.patient_remaining) > 0 || Number(row.sgk_remaining) > 0).map((row) => row.sale_id)
+  );
   const scan = parseScan(String(search ?? ""));
   const text = scan.gtin ? (scan.serial ?? "") : search;
-  return rows.map((row) => toItem(row, valueOf)).filter((item) => matchesSoldSearch(item, text));
+  return rows
+    .map((row) => ({ ...toItem(row, valueOf), owed: owedOn.has(row.sales?.id) }))
+    .filter((item) => matchesSoldSearch(item, text));
 }
 
 async function findItem(id) {

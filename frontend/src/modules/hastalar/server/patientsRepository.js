@@ -116,6 +116,15 @@ export async function listItemValues(saleIds) {
   return check(await supabase.from("sale_item_values").select("sale_item_id, net_value").in("sale_id", saleIds));
 }
 
+// What is still owed on each sale (patient share and expected SGK), for hiding "Tahsilat ekle" when nothing is left.
+export async function listSaleBalances(saleIds) {
+  if (!saleIds.length) return [];
+  const supabase = await createClient();
+  return check(
+    await supabase.from("sales_overview").select("sale_id, patient_remaining, sgk_remaining").in("sale_id", saleIds)
+  );
+}
+
 export async function listReplacements(saleItemIds) {
   if (!saleItemIds.length) return [];
   const supabase = await createClient();
