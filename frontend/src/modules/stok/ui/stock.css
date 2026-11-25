@@ -14,7 +14,7 @@
 .stock-toolbar {
   /* Section switch and "Fiyat güncelle" sit right, next to the view switch (user's choice, 2026-11-18);
      the empty middle column takes the remaining width. */
-  display: grid; grid-template-columns: minmax(185px, 278px) minmax(0, 1fr) auto auto;
+  display: grid; grid-template-columns: minmax(185px, 340px) minmax(0, 1fr) auto auto;
   grid-template-areas: "search . filters view" "actions actions actions actions";
   align-items: center; gap: 10px 12px; padding: 12px;
   border: 1px solid #dce7ea; border-radius: 16px;

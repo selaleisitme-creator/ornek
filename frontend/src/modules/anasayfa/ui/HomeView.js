@@ -30,6 +30,7 @@ export default function HomeView({ view }) {
             series={[{ name: money ? "Satış" : "Satış adedi", color: "#244D9C" }]}
             formatValue={money ? formatWholeMoney : String}
             axisUnit={money ? 1000 : 1}
+            axisLabel={money ? "bin TL" : undefined}
           />
           <div className="home-sales-total">
             <span>{money ? "Toplam satış · tüm dönem" : "Satış adedi · tüm dönem"}</span>

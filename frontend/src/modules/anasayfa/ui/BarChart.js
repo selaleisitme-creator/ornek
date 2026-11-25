@@ -7,13 +7,14 @@ import { chartScale, formatAxis } from "../homeRules";
 //   series: [{ name, color }]
 //   formatValue: optional, writes the number above single bars
 //   axisUnit: the axis shows value / axisUnit (money charts use 1000, like the design: 200 = 200.000 TL)
+//   axisLabel: optional unit written above the axis ("bin TL"), so 100 is not read as 100 TL
 const LEFT = 34;
 const RIGHT = 354;
 const TOP = 16;
 const BOTTOM = 174;
 const PLOT_HEIGHT = BOTTOM - TOP;
 
-export default function BarChart({ bars, series, formatValue, title, axisUnit = 1 }) {
+export default function BarChart({ bars, series, formatValue, title, axisUnit = 1, axisLabel }) {
   const max = Math.max(0, ...bars.flatMap((bar) => bar.values));
   // Scaled in axis units, so an empty money chart reads 0–4 (thousand) instead of five zeros.
   const scale = chartScale(max / axisUnit);
@@ -24,6 +25,11 @@ export default function BarChart({ bars, series, formatValue, title, axisUnit = 
 
   return (
     <svg viewBox="0 0 360 200" width="100%" role="img" aria-label={title} className="home-chart">
+      {axisLabel && (
+        <text x={LEFT - 5} y="7" fontSize="8" textAnchor="end" fill="#6c7a89">
+          {axisLabel}
+        </text>
+      )}
       {scale.ticks.map((tick) => (
         <g key={tick}>
           <line x1={LEFT} x2={RIGHT} y1={y(tick * axisUnit)} y2={y(tick * axisUnit)} stroke="#e1e7ed" />
