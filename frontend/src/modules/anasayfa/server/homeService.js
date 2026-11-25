@@ -1,6 +1,7 @@
 import "server-only";
 import { todayInClinic, formatDate } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
+import { summarizeDevices } from "@/lib/devices";
 import * as repo from "./homeRepository";
 import { lastDownloadAt } from "@/modules/ayarlar/server/backupRepository";
 import { isOffsiteDue } from "@/modules/ayarlar/backupRules";
@@ -130,7 +131,7 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
       rule: "Koşul: Son \"Geldi\" randevusundan, son bakım iletişiminden ya da cihaz satışından bu yana bakım aralığı geçti ve bekleyen randevusu yok.",
       patients: dueMaintenance.map((patient) => ({
         ...patientRow(patient),
-        note: `Bakım iletişimi zamanı${patient.devices ? ` · ${patient.devices}` : ""}`,
+        note: `Bakım iletişimi zamanı${patient.devices ? ` · ${summarizeDevices(patient.devices)}` : ""}`,
         whatsappText: `Merhaba ${firstName(patient.full_name)}, Şelale İşitme'den yazıyoruz. Cihazınızın periyodik bakım zamanı geldi; size uygun bir gün için randevu oluşturalım mı?`,
       })),
       action: { href: "/hastalar", label: "Hastalar →" },
@@ -228,7 +229,7 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
       rule: "Koşul: Cihaz satışından 6–14 gün geçti ve satıştan sonraki ilk 15 günde iptal edilmemiş randevu yok.",
       patients: firstCheck.map((patient) => ({
         ...patientRow(patient),
-        note: `${daysBetween(patient.adaptation_start, today)} gündür cihaz kullanıyor${patient.devices ? ` · ${patient.devices}` : ""}`,
+        note: `${daysBetween(patient.adaptation_start, today)} gündür cihaz kullanıyor${patient.devices ? ` · ${summarizeDevices(patient.devices)}` : ""}`,
         bookAppointment: true,
       })),
       action: { href: "/hastalar", label: "Hasta kartlarını aç →" },
@@ -246,7 +247,7 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
       rule: "Koşul: Cihaz satışından 38–52 gün geçti ve 20.–55. günler arasında iptal edilmemiş randevu yok.",
       patients: fortyFive.map((patient) => ({
         ...patientRow(patient),
-        note: `${daysBetween(patient.adaptation_start, today)} günlük adaptasyon süreci${patient.devices ? ` · ${patient.devices}` : ""}`,
+        note: `${daysBetween(patient.adaptation_start, today)} günlük adaptasyon süreci${patient.devices ? ` · ${summarizeDevices(patient.devices)}` : ""}`,
         bookAppointment: true,
       })),
       action: { href: "/hastalar", label: "Hasta kartlarını aç →" },
@@ -286,7 +287,7 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
       rule: "Koşul: Garanti son 60 gün içinde bitti.",
       patients: ended.map(({ patient, state }) => ({
         ...patientRow(patient),
-        note: `Garanti ${state.days} gün önce bitti${patient.devices ? ` · ${patient.devices}` : ""}`,
+        note: `Garanti ${state.days} gün önce bitti${patient.devices ? ` · ${summarizeDevices(patient.devices)}` : ""}`,
       })),
       action: { href: "/hastalar", label: "Hastaları aç →" },
     });

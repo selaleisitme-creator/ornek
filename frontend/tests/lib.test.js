@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { formatMoney, formatMoneyInput, parseMoney } from "@/lib/money";
 import { formatDate, formatDateTime, parseDisplayDate, todayInClinic } from "@/lib/dates";
 import { formatPhone, normalizePhone, splitPhone } from "@/lib/phone";
+import { summarizeDevices } from "@/lib/devices";
 import { normalizeGtin, parseScan } from "@/lib/gs1";
 import { whatsappLink } from "@/lib/whatsapp";
 import { toUserMessage } from "@/lib/postgresErrors";
@@ -192,5 +193,16 @@ describe("database errors", () => {
 
   it("never shows an unknown database message", () => {
     expect(toUserMessage({ message: "relation public.secret_table does not exist" })).toBe("İşlem tamamlanamadı. Lütfen tekrar deneyin.");
+  });
+});
+
+describe("device summary", () => {
+  it("writes the same model on both ears once", () => {
+    expect(summarizeDevices("Phonak Audéo L90, Phonak Audéo L90")).toBe("Phonak Audéo L90 (sağ + sol)");
+  });
+  it("keeps different models and a single device as they are", () => {
+    expect(summarizeDevices("Signia 7IX, Phonak L90")).toBe("Signia 7IX, Phonak L90");
+    expect(summarizeDevices("Signia 7IX")).toBe("Signia 7IX");
+    expect(summarizeDevices(null)).toBeNull();
   });
 });

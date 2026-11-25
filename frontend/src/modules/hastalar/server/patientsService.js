@@ -1,4 +1,5 @@
 import "server-only";
+import { summarizeDevices } from "@/lib/devices";
 import { todayInClinic } from "@/lib/dates";
 import { formatPhone } from "@/lib/phone";
 import { decryptNationalId, encryptNationalId, maskNationalId } from "@/lib/nationalId";
@@ -52,7 +53,7 @@ function toListRow(row, today) {
     name: row.full_name,
     phone: formatPhone(row.phone),
     candidate: row.record_type === "candidate",
-    devices: row.devices,
+    devices: summarizeDevices(row.devices),
     status: row.status,
     statusText: statusLabel(row.status),
     adaptation: row.status === "adaptation" ? adaptationInfo(row.adaptation_start, today) : null,
@@ -113,7 +114,7 @@ export async function getPatientCard(id, staff) {
     statusText: statusLabel(overview?.status ?? "new"),
     devices: {
       hasDevice: Boolean(overview?.has_device),
-      names: overview?.devices ?? null,
+      names: summarizeDevices(overview?.devices),
       right: overview?.right_device ?? null,
       left: overview?.left_device ?? null,
       warrantyEnd: overview?.warranty_end ?? null,
