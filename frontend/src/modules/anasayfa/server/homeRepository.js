@@ -158,7 +158,7 @@ export async function listPendingSgk() {
 export async function listReferralSources() {
   const supabase = await createClient();
   return check(
-    await supabase.from("referral_sources").select("id, name, visible").eq("active", true).order("sort_order").order("id")
+    await supabase.from("referral_sources").select("id, name, visible, icon_path").eq("active", true).order("sort_order").order("id")
   );
 }
 
@@ -168,15 +168,47 @@ export async function updateReferralSource(id, fields) {
   if (error) throw error;
 }
 
-export async function insertReferralSource(name, sortOrder) {
+// Every source, removed ones included: a removed name still holds its place in the unique index.
+export async function listAllReferralSourceNames() {
+  const supabase = await createClient();
+  return check(await supabase.from("referral_sources").select("id, name, active"));
+}
+
+export async function reactivateReferralSource(id, name, iconPath) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("referral_sources")
-    .insert({ name, sort_order: sortOrder })
+    .update({ name, icon_path: iconPath, active: true, visible: true })
+    .eq("id", id)
     .select("id, name, visible")
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function insertReferralSource(name, sortOrder, iconPath) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("referral_sources")
+    .insert({ name, sort_order: sortOrder, icon_path: iconPath })
+    .select("id, name, visible")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+const ICON_BUCKET = "source-icons";
+
+export async function uploadSourceIcon(path, file) {
+  const supabase = await createClient();
+  const { error } = await supabase.storage.from(ICON_BUCKET).upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+}
+
+export async function removeSourceIcon(path) {
+  const supabase = await createClient();
+  const { error } = await supabase.storage.from(ICON_BUCKET).remove([path]);
+  if (error) throw error;
 }
 
 export async function maxReferralSortOrder() {

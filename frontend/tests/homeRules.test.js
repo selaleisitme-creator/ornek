@@ -14,6 +14,8 @@ import {
   needsMaintenanceContact,
   paymentShares,
   referralIcon,
+  presetIconPath,
+  iconFileError,
   warrantyState,
 } from "../src/modules/anasayfa/homeRules";
 
@@ -107,7 +109,7 @@ describe("display helpers", () => {
   });
 
   it("picks a mark for known referral sources", () => {
-    expect(referralIcon("Instagram")).toEqual({ tone: "instagram", mark: "◎" });
+    expect(referralIcon("Instagram")).toEqual({ tone: "instagram", mark: "◎", src: null });
     expect(referralIcon("Web sitesi").tone).toBe("website");
     expect(referralIcon("Komşu").tone).toBe("generic");
   });
@@ -134,5 +136,20 @@ describe("needsMaintenanceContact", () => {
   });
   it("skips a device sold more than five years ago", () => {
     expect(needsMaintenanceContact({ adaptation_start: "2020-01-01", next_appointment: null }, fiveYearsAgo)).toBe(false);
+  });
+});
+
+describe("source logos", () => {
+  it("points a preset at its drawn mark and an upload at the bucket", () => {
+    expect(referralIcon("YouTube", "preset:youtube").src).toBe("/source-icons/youtube.svg");
+    expect(referralIcon("Kurs", "abc 1.webp", "https://x.test/storage").src).toBe("https://x.test/storage/abc%201.webp");
+    expect(referralIcon("Eski", "preset:yok").src).toBeNull();
+  });
+  it("accepts only known presets and small PNG or WebP files", () => {
+    expect(presetIconPath("tiktok")).toBe("preset:tiktok");
+    expect(presetIconPath("../evil")).toBeNull();
+    expect(iconFileError({ type: "image/webp", size: 2048 })).toBeNull();
+    expect(iconFileError({ type: "image/jpeg", size: 2048 })).toMatch(/PNG/);
+    expect(iconFileError({ type: "image/png", size: 600 * 1024 })).toMatch(/512/);
   });
 });

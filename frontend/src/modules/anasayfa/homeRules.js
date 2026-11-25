@@ -168,7 +168,50 @@ const SOURCE_ICONS = [
   [/tavsiye|öneri/i, "other", "★"],
 ];
 
-export function referralIcon(name) {
+// The logos offered in "Simge ekle" (public/source-icons/<key>.svg, simple marks drawn for the panel). A source keeps
+// its choice in referral_sources.icon_path as "preset:<key>", or as a file path in the source-icons bucket.
+export const SOURCE_PRESETS = [
+  { key: "instagram", label: "Instagram" },
+  { key: "facebook", label: "Facebook" },
+  { key: "youtube", label: "YouTube" },
+  { key: "linkedin", label: "LinkedIn" },
+  { key: "tiktok", label: "TikTok" },
+  { key: "whatsapp", label: "WhatsApp" },
+  { key: "x", label: "X / Twitter" },
+  { key: "threads", label: "Threads" },
+  { key: "google", label: "Google" },
+  { key: "pinterest", label: "Pinterest" },
+  { key: "snapchat", label: "Snapchat" },
+  { key: "telegram", label: "Telegram" },
+  { key: "website", label: "Web sitesi" },
+  { key: "phone", label: "Telefon" },
+  { key: "app", label: "Uygulama" },
+];
+
+export const PRESET_PREFIX = "preset:";
+export const ICON_TYPES = ["image/png", "image/webp"];
+export const MAX_ICON_BYTES = 512 * 1024; // the source-icons bucket's own limit (008)
+
+export function presetIconPath(key) {
+  return SOURCE_PRESETS.some((preset) => preset.key === key) ? `${PRESET_PREFIX}${key}` : null;
+}
+
+export function iconFileError(file) {
+  if (!file || typeof file.size !== "number" || file.size === 0) return "Logo dosyası seçin.";
+  if (!ICON_TYPES.includes(file.type)) return "Logo PNG ya da WebP olmalı.";
+  if (file.size > MAX_ICON_BYTES) return "Logo 512 KB'tan büyük olamaz.";
+  return null;
+}
+
+// name: the source's name (decides the letter mark when no logo is chosen); iconPath: referral_sources.icon_path;
+// storageBase: the public URL of the source-icons bucket. Returns { tone, mark, src }; src is null for a letter mark.
+export function referralIcon(name, iconPath = null, storageBase = "") {
   const match = SOURCE_ICONS.find(([pattern]) => pattern.test(name ?? ""));
-  return match ? { tone: match[1], mark: match[2] } : { tone: "generic", mark: "↗" };
+  const mark = match ? { tone: match[1], mark: match[2] } : { tone: "generic", mark: "↗" };
+  if (!iconPath) return { ...mark, src: null };
+  if (iconPath.startsWith(PRESET_PREFIX)) {
+    const key = iconPath.slice(PRESET_PREFIX.length);
+    return { ...mark, src: SOURCE_PRESETS.some((preset) => preset.key === key) ? `/source-icons/${key}.svg` : null };
+  }
+  return { ...mark, src: `${storageBase}/${iconPath.split("/").map(encodeURIComponent).join("/")}` };
 }

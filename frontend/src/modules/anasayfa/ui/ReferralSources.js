@@ -1,4 +1,5 @@
 import ReferralSourcePicker from "./ReferralSourcePicker";
+import SourceIcon from "./SourceIcon";
 
 // "Randevu kaynakları": where patients came from. Each patient counts once, by their first appointment that
 // was not cancelled; the columns say whether that first visit happened. Which sources are
@@ -54,13 +55,5 @@ export default function ReferralSources({ table }) {
       )}
       <p className="home-referrals-note">Her hasta bir kez sayılır: iptal edilmemiş ilk randevusuyla. Kaynak o randevudan, boşsa hasta kaydından alınır; ikisi de boşsa hasta tabloda yer almaz.</p>
     </section>
-  );
-}
-
-export function SourceIcon({ icon }) {
-  return (
-    <span className={`home-source-icon ${icon.tone}`} aria-hidden="true">
-      {icon.mark}
-    </span>
   );
 }

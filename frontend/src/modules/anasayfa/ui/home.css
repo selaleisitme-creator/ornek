@@ -280,8 +280,6 @@
   color: #b64038; font: inherit; font-size: 11px; font-weight: 750; cursor: pointer;
 }
 .home-source-remove:hover { background: #fdeeee; }
-.home-source-add { display: flex; align-items: center; gap: 8px; }
-.home-source-add .ui-input { flex: 1; min-width: 0; }
 
 /* ---------- Narrower pages ---------- */
 @container home (max-width: 1100px) {
@@ -319,3 +317,27 @@
   .home-history-date { grid-column: 1 / -1; display: flex; gap: 6px; align-items: baseline; }
   .home-history-date b { font-size: 12px; }
 }
+
+/* ---------- Source logos ("Gösterilecek kaynaklar") ---------- */
+.home-source-logo { background: #fff; border: 1px solid var(--ui-line); }
+.home-source-logo img { width: 20px; height: 20px; object-fit: contain; }
+.home-source-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.home-source-add .ui-input { flex: 1 1 220px; }
+.home-source-chosen { display: inline-flex; align-items: center; gap: 6px; color: var(--ui-muted); font-size: 12.5px; }
+.home-source-chosen img { width: 22px; height: 22px; object-fit: contain; }
+.home-source-gallery {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px;
+  padding: 12px; border: 1px solid var(--ui-line); border-radius: 12px; background: var(--ui-soft);
+}
+.home-source-preset {
+  display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 10px;
+  border: 1px solid var(--ui-line); border-radius: 10px; background: #fff; color: var(--ui-ink);
+  font: inherit; font-size: 13px; font-weight: 700; text-align: left; cursor: pointer;
+  transition-property: border-color, box-shadow; transition-duration: 150ms; transition-timing-function: ease-out;
+}
+.home-source-preset img { flex: none; width: 22px; height: 22px; object-fit: contain; }
+.home-source-preset:hover, .home-source-preset.on { border-color: var(--ui-blue); }
+.home-source-preset.on { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-blue) 25%, transparent); }
+.home-source-preset:focus-visible { outline: 2px solid var(--ui-blue); outline-offset: 2px; }
+.home-source-upload { grid-column: span 2; color: var(--ui-muted); }
+.home-source-upload span { display: inline-grid; place-items: center; width: 22px; font-size: 18px; }
