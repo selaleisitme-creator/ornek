@@ -72,16 +72,16 @@ function SoldRow({ item, open, methods, search }) {
   return (
     <>
       <tr id={`sold-${item.saleItemId}`} className={open ? "sold-open" : undefined}>
-        <td className="sold-num">{formatDate(item.saleDate)}</td>
-        <td>
+        <td className="sold-num" data-label="Tarih">{formatDate(item.saleDate)}</td>
+        <td className="sold-product" data-label="Ürün">
           <b>{item.product}</b>
           <small className="sale-muted"> {item.saleNo}{item.wholesale ? " · toptan" : ""}</small>
         </td>
-        <td className="stock-code sold-serial">{item.serial ?? "—"}</td>
-        <td>{item.patientId ? <Link href={`/hastalar?ac=${item.patientId}`}>{item.buyer}</Link> : (item.buyer ?? "—")}</td>
-        <td className="ui-end sold-num">{formatMoney(item.value)}</td>
-        <td>{item.paymentText ?? "—"}</td>
-        <td>
+        <td className="stock-code sold-serial" data-label="Seri no">{item.serial ?? "—"}</td>
+        <td data-label="Hasta / alıcı">{item.patientId ? <Link href={`/hastalar?ac=${item.patientId}`}>{item.buyer}</Link> : (item.buyer ?? "—")}</td>
+        <td className="ui-end sold-num" data-label="Satış fiyatı">{formatMoney(item.value)}</td>
+        <td data-label="Ödeme">{item.paymentText ?? "—"}</td>
+        <td data-label="Durum">
           {item.refunded ? (
             <StatusBadge tone="danger">İade edildi</StatusBadge>
           ) : item.missing.length ? (
@@ -90,7 +90,7 @@ function SoldRow({ item, open, methods, search }) {
             <StatusBadge tone="ok">Tamam</StatusBadge>
           )}
         </td>
-        <td>
+        <td className="sold-actions-cell">
           <span className="sold-actions">
             <Link href={detailsHref} scroll={false} className={`sold-action sold-action-main${open ? " on" : ""}`} aria-expanded={open}>
               {open ? "Kapat" : "Ayrıntı"}

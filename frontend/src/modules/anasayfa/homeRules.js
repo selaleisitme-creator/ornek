@@ -90,15 +90,8 @@ export function paymentShares(rows) {
   }));
 }
 
-// "Takip bilgisi eksik" leaves out brands whose devices carry no production date or WSA code on their
-// label (Coselgi, as in the design; decided 2026-11-21).
-export const TRACKING_EXEMPT_BRANDS = ["coselgi"];
-
-export function isTrackingExempt(brandName) {
-  // Turkish lower-casing turns "I" into "ı", so "COSELGI" would not match without folding ı back to i.
-  const name = String(brandName ?? "").trim().toLocaleLowerCase("tr-TR").replace(/ı/g, "i");
-  return TRACKING_EXEMPT_BRANDS.includes(name);
-}
+// The tracking exemption lives with the sold-items rule, so the home suggestion and Stok > Satılan ürünler agree.
+export { TRACKING_EXEMPT_BRANDS, isTrackingExempt } from "@/modules/satis/refundRules";
 
 // SGK invoices are cut in the last 7 or the first 7 days of the month (plan 3.7).
 export function isSgkInvoiceWindow(todayIso) {
@@ -126,6 +119,14 @@ export const FOLLOW_UPS = {
   firstCheck: { from: 6, to: 14, coverFrom: 0, coverTo: 15 },
   fortyFive: { from: 38, to: 52, coverFrom: 20, coverTo: 55 },
 };
+
+// "Cihaz bakım iletişimi": a maintenance-due patient is listed only while the device sale is under 5 years old (plan
+// 3.7) and no appointment is booked yet. Once a visit is waiting, the message has nothing left to ask for.
+//   patient: { adaptation_start, next_appointment }; fiveYearsAgo: "YYYY-MM-DD"
+export function needsMaintenanceContact(patient, fiveYearsAgo) {
+  if (patient?.next_appointment) return false;
+  return !patient?.adaptation_start || patient.adaptation_start >= fiveYearsAgo;
+}
 
 export function needsFollowUp(rule, saleDate, todayIso, appointmentDays) {
   const age = daysBetween(saleDate, todayIso);

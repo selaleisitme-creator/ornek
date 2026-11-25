@@ -40,11 +40,23 @@ export function refundGuidance(method, amountText) {
   return `${amountText} tutarı hastaya geri verin.`;
 }
 
-// Post-sale information the sold-items list still lacks for a hearing aid or receiver: ÜTS number, production date,
-// WSA code. Other goods have none to fill in.
+// Brands whose devices carry no production date or WSA code on their label (Coselgi, as in the design; decided
+// 2026-11-21). Their ÜTS number is still asked for.
+export const TRACKING_EXEMPT_BRANDS = ["coselgi"];
+
+export function isTrackingExempt(brandName) {
+  // Turkish lower-casing turns "I" into "ı", so "COSELGI" would not match without folding ı back to i.
+  const name = String(brandName ?? "").trim().toLocaleLowerCase("tr-TR").replace(/ı/g, "i");
+  return TRACKING_EXEMPT_BRANDS.includes(name);
+}
+
+// Post-sale information a sold hearing aid or receiver still lacks: ÜTS number, production date, WSA code. Other goods
+// have none to fill in. The sold-items badge and the home page's "takip bilgisi eksik" suggestion both count with this,
+// so the two always agree.
 export function missingInfo(item) {
   if (!item?.isDevice) return [];
-  return [!item.utsNo && "ÜTS no", !item.productionDate && "ÜRT tarihi", !item.wsaCode && "WSA kodu"].filter(Boolean);
+  const label = !isTrackingExempt(item.brand);
+  return [!item.utsNo && "ÜTS no", label && !item.productionDate && "ÜRT tarihi", label && !item.wsaCode && "WSA kodu"].filter(Boolean);
 }
 
 // "Satış sonrası bilgiler" → the values to write, or the problem. productionDate cannot be after the sale.

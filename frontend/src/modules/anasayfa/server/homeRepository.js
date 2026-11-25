@@ -82,7 +82,7 @@ export async function countUnmarkedAppointments(dayStartIso, nowIso) {
   );
 }
 
-const OVERVIEW_COLUMNS = "patient_id, full_name, phone, devices, warranty_end, adaptation_start, status";
+const OVERVIEW_COLUMNS = "patient_id, full_name, phone, devices, warranty_end, adaptation_start, next_appointment, status";
 
 export async function listMaintenanceDue() {
   const supabase = await createClient();
@@ -124,22 +124,6 @@ export async function listAppointmentDays(patientIds, fromIso) {
       .in("patient_id", patientIds)
       .neq("status", "cancelled")
       .gte("starts_at", fromIso)
-  );
-}
-
-// Sold devices and chargers still missing a production date or a WSA code. Exempt brands are filtered
-// out in the service, so the limit leaves room for them.
-export async function listUnitsMissingTracking() {
-  const supabase = await createClient();
-  return check(
-    await supabase
-      .from("stock_units")
-      .select("id, serial_no, production_date, wsa_code, products!inner(name, category, brands(name))")
-      .eq("status", "sold")
-      .in("products.category", ["device", "charger"])
-      .or("production_date.is.null,wsa_code.is.null")
-      .order("id", { ascending: false })
-      .limit(200)
   );
 }
 

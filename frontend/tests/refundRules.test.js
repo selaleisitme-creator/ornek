@@ -37,6 +37,11 @@ describe("sold items", () => {
     expect(missingInfo({ isDevice: false })).toEqual([]);
   });
 
+  it("asks a label-less brand for its ÜTS number only", () => {
+    expect(missingInfo({ isDevice: true, brand: "COSELGI", utsNo: "", productionDate: null, wsaCode: null })).toEqual(["ÜTS no"]);
+    expect(missingInfo({ isDevice: true, brand: "Coselgi", utsNo: "U1" })).toEqual([]);
+  });
+
   it("checks the post-sale information", () => {
     expect(buildSoldInfo({ productionDate: "2025-05-01", wsaCode: " W-1 ", utsNo: " U-1 " }, { item: device })).toEqual({
       unit: { production_date: "2025-05-01", wsa_code: "W-1" },

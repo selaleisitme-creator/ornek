@@ -29,7 +29,7 @@ export default function WebBookingCard({ pendingCount, lastRequestAt }) {
       </dl>
 
       <p className="settings-hint" style={{ margin: 0 }}>
-        Talepleri onaylama ya da reddetme Randevular sayfasına eklenecek.
+        Talepler Randevular sayfasında onaylanır ya da reddedilir.
       </p>
     </section>
   );

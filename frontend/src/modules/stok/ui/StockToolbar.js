@@ -56,7 +56,7 @@ export default function StockToolbar({ searchText, clearHref, entryOptions, remo
             </Link>
           )}
         </div>
-        <ScanInput label="Ürün, barkod veya seri no ara" placeholder="Ürün, barkod veya seri no (örn. 21…) ara…" onScan={search} />
+        <ScanInput label="Ürün, barkod veya seri no ara" placeholder="Ürün, barkod ya da seri no ara…" onScan={search} />
       </div>
 
       <div className="stock-toolbar-filters">

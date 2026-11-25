@@ -54,7 +54,7 @@ button.sale-row { cursor: pointer; }
 
 /* Stok > Satılan ürünler */
 /* Mevcut stok's toolbar grid (stock.css) without the view switch and the bottom action row. */
-.stock-toolbar.sold-toolbar { grid-template-columns: minmax(185px, 278px) minmax(0, 1fr) auto; grid-template-areas: "search . filters"; }
+.stock-toolbar.sold-toolbar { grid-template-columns: minmax(185px, 340px) minmax(0, 1fr) auto; grid-template-areas: "search . filters"; }
 .stock-price-button:disabled { opacity: .55; cursor: not-allowed; }
 @container stock-page (max-width: 1000px) {
   .stock-toolbar.sold-toolbar { grid-template-columns: minmax(0, 1fr); grid-template-areas: "search" "filters"; }
@@ -96,3 +96,26 @@ button.sale-row { cursor: pointer; }
 .sold-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sold-serial { white-space: nowrap; }
 .sold-table td b { text-wrap: pretty; }
+
+/* Phones: each sold row becomes a card, label on the left and value on the right, like Mevcut stok's cards. The product
+   name spans the card's top; the action buttons sit side by side at its foot. */
+@container stock-page (max-width: 610px) {
+  .sold-scroll { overflow: visible; border: 0; background: transparent; }
+  .sold-table, .sold-table tbody { display: block; }
+  .sold-table thead { display: none; }
+  .sold-table tr { display: grid; gap: 6px; margin-bottom: 10px; padding: 12px 14px; border: 1px solid var(--ui-line); border-radius: 12px; background: #fff; }
+  .sold-table td { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 0; border: 0; text-align: right; }
+  .sold-table td::before { content: attr(data-label); flex: none; color: var(--ui-muted); font-size: 12px; text-align: left; }
+  .sold-table td.sold-product { display: block; order: -1; text-align: left; }
+  .sold-table td.sold-product::before, .sold-table td.sold-actions-cell::before { content: none; }
+  .sold-table td.sold-actions-cell { padding-top: 6px; border-top: 1px solid var(--ui-line); }
+  .sold-actions { flex-direction: row; flex-wrap: wrap; width: 100%; }
+  .sold-actions > * { flex: 1 1 0; }
+  .sold-table tr.sold-open td, .sold-table tr.sold-open td:first-child, .sold-table tr.sold-open td:last-child { border-left: 0; border-right: 0; border-top: 0; }
+  .sold-table tr.sold-open { border: 2px solid var(--ui-blue); background: var(--ui-soft); }
+  .sold-table tr.sold-open:not(.sold-details) { margin-bottom: 0; border-bottom-width: 0; border-radius: 12px 12px 0 0; }
+  .sold-table tr.sold-details { margin-top: -1px; border-top: 0; border-radius: 0 0 12px 12px; }
+  .sold-table tr.sold-open:not(.sold-details) td, .sold-table tr.sold-details td { border: 0; background: transparent; }
+  .sold-table tr.sold-details td { display: block; text-align: left; }
+  .sold-table tr.sold-details td::before { content: none; }
+}

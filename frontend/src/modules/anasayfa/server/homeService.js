@@ -5,6 +5,7 @@ import * as repo from "./homeRepository";
 import { lastDownloadAt } from "@/modules/ayarlar/server/backupRepository";
 import { isOffsiteDue } from "@/modules/ayarlar/backupRules";
 import { ValidationError } from "./errors";
+import { listSoldItems } from "@/modules/satis/server/soldService";
 import {
   FOLLOW_UPS,
   addDays,
@@ -13,9 +14,9 @@ import {
   daysBetween,
   fillMonths,
   isSgkInvoiceWindow,
-  isTrackingExempt,
   lastMonths,
   needsFollowUp,
+  needsMaintenanceContact,
   paymentShares,
   referralIcon,
   warrantyState,
@@ -88,14 +89,14 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
     warrantyFrom: addDays(today, -60),
     warrantyTo: addDays(today, 45),
   };
-  const [maintenance, candidates, stock, webRequests, unmarked, trackingRows, backupSettings, lastRun, lastSuccess, links, sgk] =
+  const [maintenance, candidates, stock, webRequests, unmarked, soldItems, backupSettings, lastRun, lastSuccess, links, sgk] =
     await Promise.all([
       repo.listMaintenanceDue(),
       repo.listFollowUpCandidates(followWindow),
       repo.listStockAlerts(),
       repo.countNewWebRequests(),
       repo.countUnmarkedAppointments(clinicDayStart(today), now.toISOString()),
-      repo.listUnitsMissingTracking(),
+      listSoldItems(),
       repo.getBackupSettings(),
       repo.getLastBackupRun(null),
       repo.getLastBackupRun("succeeded"),
@@ -116,9 +117,8 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
 
   const list = [];
 
-  // Maintenance: the device sale must be under 5 years old (plan 3.7).
   const fiveYearsAgo = addDays(today, -5 * 365);
-  const dueMaintenance = maintenance.filter((patient) => !patient.adaptation_start || patient.adaptation_start >= fiveYearsAgo);
+  const dueMaintenance = maintenance.filter((patient) => needsMaintenanceContact(patient, fiveYearsAgo));
   if (dueMaintenance.length) {
     list.push({
       id: "maintenance",
@@ -127,7 +127,7 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
       kind: "Hasta takibi",
       title: `${dueMaintenance.length} hasta için cihaz bakım iletişimi`,
       detail: "Bakım aralığı dolan aktif cihaz kullanıcıları. Mesajı siz gönderirsiniz; kayıtlar kendiliğinden değişmez.",
-      rule: "Koşul: Son \"Geldi\" randevusundan, son bakım iletişiminden ya da cihaz satışından bu yana bakım aralığı geçti.",
+      rule: "Koşul: Son \"Geldi\" randevusundan, son bakım iletişiminden ya da cihaz satışından bu yana bakım aralığı geçti ve bekleyen randevusu yok.",
       patients: dueMaintenance.map((patient) => ({
         ...patientRow(patient),
         note: `Bakım iletişimi zamanı${patient.devices ? ` · ${patient.devices}` : ""}`,
@@ -168,7 +168,8 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
     });
   }
 
-  const tracking = trackingRows.filter((unit) => !isTrackingExempt(unit.products?.brands?.name));
+  // Same list and rule as Stok > Satılan ürünler ("Eksik bilgi"), so the count here matches the badges there.
+  const tracking = soldItems.filter((item) => item.missing.length);
   if (tracking.length) {
     list.push({
       id: "tracking",
@@ -178,13 +179,10 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
       title: `${tracking.length} satılan üründe takip bilgisi eksik`,
       detail: tracking
         .slice(0, 3)
-        .map((unit) => {
-          const missing = [!unit.production_date && "ÜRT tarihi", !unit.wsa_code && "WSA kodu"].filter(Boolean).join(" ve ");
-          return `${unit.products?.brands?.name ?? ""} ${unit.products?.name ?? ""}${unit.serial_no ? ` · ${unit.serial_no}` : ""}: ${missing}`;
-        })
+        .map((item) => `${item.product}${item.serial ? ` · ${item.serial}` : ""}: ${item.missing.join(", ")}`)
         .join(" · ") + (tracking.length > 3 ? ` · +${tracking.length - 3} ürün` : ""),
-      rule: "Koşul: Satılan cihaz ya da şarj cihazında üretim tarihi veya WSA kodu boş (Coselgi hariç).",
-      action: { href: "/stok", label: "Stoğu aç →" },
+      rule: "Koşul: Satılan cihaz ya da receiver'da ÜTS no, üretim tarihi veya WSA kodu boş (Coselgi'de yalnızca ÜTS no; iade edilenler ve panel öncesi satışlar hariç).",
+      action: { href: "/stok?sekme=satilan", label: "Satılan ürünleri aç →" },
     });
   }
 
