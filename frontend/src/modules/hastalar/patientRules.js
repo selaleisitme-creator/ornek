@@ -80,7 +80,7 @@ export const ADAPTATION_DAYS = 45;
 // patient_overview.status (008_design_gaps.sql) → the design's labels. tone is a StatusBadge tone.
 const STATUS = {
   candidate: { label: "Randevu adayı", tone: "warn" },
-  new: { label: "Ürün satışı bekleniyor", tone: "warn", note: "Satış kaydıyla 45 günlük adaptasyon takibi başlar." },
+  new: { label: "Hasta işlemi bekleniyor", tone: "warn", note: "Satış kaydıyla 45 günlük adaptasyon takibi başlar." },
   adaptation: { label: "Adaptasyon sürecinde", tone: "info" },
   maintenance_due: { label: "Bakım zamanı", tone: "warn" },
   warranty_expired: { label: "Garanti bitti", tone: "danger" },

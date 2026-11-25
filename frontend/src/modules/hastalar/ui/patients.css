@@ -1,6 +1,9 @@
 /* Hastalar. Layout from Selale_Prototip_Model_2's Hastalar page (toolbar card, status cell with the adaptation
-   bar, patient card with info boxes, current device, history, sales and notes); colours from the panel
-   palette in ui.css so the page matches Stok and Bağlantılar. Breakpoints on the page's own width. */
+   bar, patient card with info boxes, current device, history, sales and notes). Colours come only from the
+   shared variables in shared/ui/ui.css (--ui-blue, --ui-ink, --ui-line, --ui-soft, --ui-cream…); tints and
+   shadows are mixed from them with color-mix, so a palette change in ui.css reaches this page too.
+   The "Cihaz ve takip bilgileri" rules (.patients-current, .patients-history, the info boxes inside a section)
+   are left as they are: that section is being rebuilt separately. Breakpoints on the page's own width. */
 
 .patients-page { display: grid; gap: 14px; min-width: 0; container: patients / inline-size; }
 
@@ -8,14 +11,14 @@
 .patients-toolbar {
   display: grid; grid-template-columns: minmax(200px, 320px) minmax(0, 1fr) auto;
   align-items: center; gap: 10px 12px; padding: 12px;
-  border: 1px solid #dce7ea; border-radius: 16px;
-  background: linear-gradient(100deg, #f8fbfc 0%, #eef4f6 100%);
+  border: 1px solid var(--ui-line); border-radius: 16px;
+  background: linear-gradient(100deg, #fff 0%, var(--ui-soft) 100%);
 }
 .patients-search .ui-input { width: 100%; }
 
 .patients-tabs {
   display: flex; flex-wrap: wrap; gap: 4px; justify-self: start; padding: 4px;
-  border: 1px solid #d7e2e5; border-radius: 13px; background: #e6edef;
+  border: 1px solid var(--ui-line); border-radius: 13px; background: var(--ui-soft);
 }
 .patients-tab {
   display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 10px;
@@ -23,21 +26,21 @@
   transition: background .15s, color .15s;
 }
 .patients-tab:hover { color: var(--ui-blue); }
-.patients-tab.on { background: #fff; color: var(--ui-blue); box-shadow: 0 3px 10px rgba(23, 60, 72, .1); }
+.patients-tab.on { background: #fff; color: var(--ui-blue); box-shadow: 0 3px 10px color-mix(in srgb, var(--ui-ink) 10%, transparent); }
 .patients-tab-count {
   min-width: 22px; padding: 1px 7px; border-radius: 999px;
-  background: rgba(36, 77, 156, .1); color: var(--ui-blue); font-size: 12px; text-align: center;
+  background: color-mix(in srgb, var(--ui-blue) 10%, transparent); color: var(--ui-blue); font-size: 12px; text-align: center;
 }
 
 .patients-toolbar-end { display: flex; align-items: center; gap: 10px; }
 .patients-views {
   display: flex; gap: 4px; padding: 4px;
-  border: 1px solid var(--ui-line); border-radius: 13px; background: #fff; box-shadow: 0 3px 10px rgba(24, 49, 66, .06);
+  border: 1px solid var(--ui-line); border-radius: 13px; background: #fff; box-shadow: 0 3px 10px color-mix(in srgb, var(--ui-ink) 6%, transparent);
 }
 .patients-view { display: grid; place-items: center; width: 36px; height: 34px; border-radius: 9px; color: var(--ui-muted); }
 .patients-view svg { width: 20px; height: 20px; }
 .patients-view:hover { color: var(--ui-blue); }
-.patients-view.on { background: var(--ui-soft); color: var(--ui-blue); box-shadow: inset 0 0 0 1px rgba(36, 77, 156, .32); }
+.patients-view.on { background: var(--ui-soft); color: var(--ui-blue); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-blue) 32%, transparent); }
 
 .patients-tab:focus-visible, .patients-view:focus-visible, .patients-back:focus-visible, .patients-link-button:focus-visible {
   outline: 2px solid var(--ui-blue); outline-offset: 2px;
@@ -46,10 +49,10 @@
 /* ---------- List ---------- */
 .patients-count { margin: 0; color: var(--ui-muted); font-size: 13px; }
 .patients-empty, .patients-empty-small {
-  margin: 0; padding: 26px 14px; border: 1px dashed #d6dfe6; border-radius: 14px;
+  margin: 0; padding: 26px 14px; border: 1px dashed var(--ui-line); border-radius: 14px;
   background: #fff; color: var(--ui-muted); text-align: center;
 }
-.patients-empty-small { padding: 14px 16px; background: #f8fafb; font-size: 13px; text-align: left; }
+.patients-empty-small { padding: 14px 16px; background: var(--ui-soft); font-size: 13px; text-align: left; }
 
 .patients-person { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .patients-person b { display: block; color: var(--ui-ink); }
@@ -62,7 +65,7 @@
 
 .patients-status { display: grid; justify-items: start; gap: 4px; }
 .patients-status small { color: var(--ui-muted); font-size: 12px; line-height: 1.35; }
-.patients-progress { display: block; width: 140px; max-width: 100%; height: 6px; border-radius: 999px; background: #e3eaf3; overflow: hidden; }
+.patients-progress { display: block; width: 140px; max-width: 100%; height: 6px; border-radius: 999px; background: var(--ui-line); overflow: hidden; }
 .patients-progress span { display: block; height: 100%; border-radius: inherit; background: var(--ui-blue); }
 
 .patients-open { min-height: 34px; padding: 6px 12px; font-size: 13px; white-space: nowrap; }
@@ -70,7 +73,7 @@
 .patients-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
 .patients-card {
   display: grid; gap: 12px; align-content: start; padding: 16px;
-  border: 1px solid var(--ui-line); border-radius: 16px; background: #fff; box-shadow: 0 10px 26px rgba(36, 77, 156, .06);
+  border: 1px solid var(--ui-line); border-radius: 16px; background: #fff; box-shadow: 0 10px 26px color-mix(in srgb, var(--ui-blue) 6%, transparent);
 }
 .patients-card-meta { display: grid; gap: 8px; margin: 0; }
 .patients-card-meta dt { color: var(--ui-muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
@@ -81,7 +84,7 @@
 .patients-profile { display: grid; gap: 16px; min-width: 0; }
 .patients-back {
   justify-self: start; display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px;
-  border: 1px solid #dfe4e7; border-radius: 11px; background: #fff;
+  border: 1px solid var(--ui-line); border-radius: 11px; background: #fff;
   color: var(--ui-muted); font-size: 13px; font-weight: 700; text-decoration: none;
 }
 .patients-back:hover { border-color: var(--ui-blue); color: var(--ui-blue); }
@@ -89,14 +92,14 @@
 .patients-profile-head {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 18px;
   border: 1px solid var(--ui-line); border-radius: 18px;
-  background: linear-gradient(112deg, var(--ui-soft), #fff); box-shadow: 0 9px 24px rgba(24, 50, 68, .055);
+  background: linear-gradient(112deg, var(--ui-soft), #fff); box-shadow: 0 9px 24px color-mix(in srgb, var(--ui-ink) 6%, transparent);
 }
 .patients-profile-title { display: grid; justify-items: start; gap: 6px; min-width: 0; }
 .patients-profile-title h1 { margin: 0; color: var(--ui-ink); font-size: 24px; line-height: 1.2; letter-spacing: -.02em; overflow-wrap: anywhere; }
 .patients-profile-title p { margin: 0; color: var(--ui-muted); font-size: 13px; }
 .patients-profile-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-.patients-whatsapp { background: #1f7a5a; color: #fff; }
-.patients-whatsapp:hover { background: #17644a; }
+.patients-whatsapp { background: var(--ui-ok); color: #fff; }
+.patients-whatsapp:hover { background: color-mix(in srgb, var(--ui-ok) 82%, #000); }
 
 .patients-info { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; }
 .patients-info-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -108,7 +111,7 @@
 
 .patients-section {
   display: grid; gap: 12px; padding: 18px;
-  border: 1px solid var(--ui-line); border-radius: 16px; background: #fff; box-shadow: 0 8px 24px rgba(36, 77, 156, .05);
+  border: 1px solid var(--ui-line); border-radius: 16px; background: #fff; box-shadow: 0 8px 24px color-mix(in srgb, var(--ui-blue) 5%, transparent);
 }
 .patients-section-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .patients-section-head h2 { margin: 0; color: var(--ui-ink); font-size: 17px; }
@@ -133,13 +136,13 @@
 .patients-history b, .patients-sale-items b { display: block; color: var(--ui-ink); font-size: 14px; overflow-wrap: anywhere; }
 .patients-history small, .patients-sale-items small { display: block; margin-top: 2px; color: var(--ui-muted); font-size: 12px; }
 
-.patients-sale { padding: 12px 14px; border: 1px solid #e3e9f1; border-radius: 12px; background: #fbfcfe; }
+.patients-sale { padding: 12px 14px; border: 1px solid var(--ui-line); border-radius: 12px; background: var(--ui-soft); }
 .patients-sale-line { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 8px; color: var(--ui-ink); }
 .patients-sale-total, .patients-money { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
-.patients-sale-items li { display: flex; justify-content: space-between; gap: 12px; padding-top: 8px; border-top: 1px solid #edf1f6; }
+.patients-sale-items li { display: flex; justify-content: space-between; gap: 12px; padding-top: 8px; border-top: 1px solid var(--ui-line); }
 .patients-sale-payment { margin: 8px 0 0; color: var(--ui-muted); font-size: 12.5px; }
 
-.patients-notes li { padding: 12px 14px; border: 1px solid #e3e9f1; border-radius: 12px; background: #fbfcfe; }
+.patients-notes li { padding: 12px 14px; border: 1px solid var(--ui-line); border-radius: 12px; background: var(--ui-soft); }
 .patients-note-head { display: flex; justify-content: space-between; gap: 10px; color: var(--ui-ink); }
 .patients-note-head span { color: var(--ui-muted); font-size: 12.5px; white-space: nowrap; }
 .patients-notes p { margin: 6px 0 0; color: var(--ui-muted); white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -159,7 +162,7 @@
 .patients-form-wide { grid-column: 1 / -1; }
 .patients-hint {
   grid-column: 1 / -1; margin: 0; padding: 10px 12px;
-  border: 1px solid var(--ui-cream-line); border-radius: 12px; background: #fbf7ef;
+  border: 1px solid var(--ui-cream-line); border-radius: 12px; background: color-mix(in srgb, var(--ui-cream) 50%, #fff);
   color: var(--ui-muted); font-size: 12.5px; line-height: 1.45;
 }
 .patients-check { display: flex; align-items: center; gap: 8px; color: var(--ui-ink); font-size: 14px; cursor: pointer; }
