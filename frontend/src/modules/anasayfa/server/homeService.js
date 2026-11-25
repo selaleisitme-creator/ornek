@@ -5,6 +5,7 @@ import * as repo from "./homeRepository";
 import { lastDownloadAt } from "@/modules/ayarlar/server/backupRepository";
 import { isOffsiteDue } from "@/modules/ayarlar/backupRules";
 import { ValidationError } from "./errors";
+import { listSoldItems } from "@/modules/satis/server/soldService";
 import {
   FOLLOW_UPS,
   addDays,
@@ -13,7 +14,6 @@ import {
   daysBetween,
   fillMonths,
   isSgkInvoiceWindow,
-  isTrackingExempt,
   lastMonths,
   needsFollowUp,
   paymentShares,
@@ -88,14 +88,14 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
     warrantyFrom: addDays(today, -60),
     warrantyTo: addDays(today, 45),
   };
-  const [maintenance, candidates, stock, webRequests, unmarked, trackingRows, backupSettings, lastRun, lastSuccess, links, sgk] =
+  const [maintenance, candidates, stock, webRequests, unmarked, soldItems, backupSettings, lastRun, lastSuccess, links, sgk] =
     await Promise.all([
       repo.listMaintenanceDue(),
       repo.listFollowUpCandidates(followWindow),
       repo.listStockAlerts(),
       repo.countNewWebRequests(),
       repo.countUnmarkedAppointments(clinicDayStart(today), now.toISOString()),
-      repo.listUnitsMissingTracking(),
+      listSoldItems(),
       repo.getBackupSettings(),
       repo.getLastBackupRun(null),
       repo.getLastBackupRun("succeeded"),
@@ -168,7 +168,8 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
     });
   }
 
-  const tracking = trackingRows.filter((unit) => !isTrackingExempt(unit.products?.brands?.name));
+  // Same list and rule as Stok > Satılan ürünler ("Eksik bilgi"), so the count here matches the badges there.
+  const tracking = soldItems.filter((item) => item.missing.length);
   if (tracking.length) {
     list.push({
       id: "tracking",
@@ -178,13 +179,9 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
       title: `${tracking.length} satılan üründe takip bilgisi eksik`,
       detail: tracking
         .slice(0, 3)
-        .map((unit) => {
-          const missing = [!unit.production_date && "ÜRT tarihi", !unit.wsa_code && "WSA kodu"].filter(Boolean).join(" ve ");
-          return `${unit.products?.brands?.name ?? ""} ${unit.products?.name ?? ""}${unit.serial_no ? ` · ${unit.serial_no}` : ""}: ${missing}`;
-        })
+        .map((item) => `${item.product}${item.serial ? ` · ${item.serial}` : ""}: ${item.missing.join(", ")}`)
         .join(" · ") + (tracking.length > 3 ? ` · +${tracking.length - 3} ürün` : ""),
-      rule: "Koşul: Satılan cihaz ya da şarj cihazında üretim tarihi veya WSA kodu boş (Coselgi hariç).",
-      // The sold items tab lists these units with their missing fields and the "Bilgiler" window that fills them.
+      rule: "Koşul: Satılan cihaz ya da receiver'da ÜTS no, üretim tarihi veya WSA kodu boş (Coselgi'de yalnızca ÜTS no; iade edilenler ve panel öncesi satışlar hariç).",
       action: { href: "/stok?sekme=satilan", label: "Satılan ürünleri aç →" },
     });
   }

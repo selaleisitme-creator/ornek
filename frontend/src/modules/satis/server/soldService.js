@@ -26,6 +26,7 @@ function toItem(row, valueOf) {
     wholesale: sale.sale_kind === "wholesale",
     patientId: sale.patient_id,
     buyer: sale.patients?.full_name ?? sale.customer_name ?? null,
+    brand: product.brands?.name ?? null,
     product: [product.brands?.name, product.name].filter(Boolean).join(" "),
     category: product.category,
     isDevice: product.category === "device" || product.category === "receiver",

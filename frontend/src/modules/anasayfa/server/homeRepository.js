@@ -127,22 +127,6 @@ export async function listAppointmentDays(patientIds, fromIso) {
   );
 }
 
-// Sold devices and chargers still missing a production date or a WSA code. Exempt brands are filtered
-// out in the service, so the limit leaves room for them.
-export async function listUnitsMissingTracking() {
-  const supabase = await createClient();
-  return check(
-    await supabase
-      .from("stock_units")
-      .select("id, serial_no, production_date, wsa_code, products!inner(name, category, brands(name))")
-      .eq("status", "sold")
-      .in("products.category", ["device", "charger"])
-      .or("production_date.is.null,wsa_code.is.null")
-      .order("id", { ascending: false })
-      .limit(200)
-  );
-}
-
 export async function getBackupSettings() {
   const supabase = await createClient();
   const { data, error } = await supabase.from("settings").select("backup_enabled").eq("id", 1).maybeSingle();
