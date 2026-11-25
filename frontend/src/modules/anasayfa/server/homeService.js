@@ -184,7 +184,8 @@ async function getSuggestions({ today, now, canSeeMoney, isAdmin }) {
         })
         .join(" · ") + (tracking.length > 3 ? ` · +${tracking.length - 3} ürün` : ""),
       rule: "Koşul: Satılan cihaz ya da şarj cihazında üretim tarihi veya WSA kodu boş (Coselgi hariç).",
-      action: { href: "/stok", label: "Stoğu aç →" },
+      // The sold items tab lists these units with their missing fields and the "Bilgiler" window that fills them.
+      action: { href: "/stok?sekme=satilan", label: "Satılan ürünleri aç →" },
     });
   }
 
