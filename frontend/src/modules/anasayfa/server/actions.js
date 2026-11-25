@@ -31,10 +31,16 @@ export async function saveReferralVisibility(changes) {
   });
 }
 
-export async function addReferralSource(name) {
+// FormData, because an uploaded logo only travels to a Server Action inside form data. Fields: name, preset, icon.
+export async function addReferralSource(formData) {
   return toActionResult(async () => {
     await requireStaff();
-    const source = await homeService.addReferralSource(name);
+    if (!(formData instanceof FormData)) throw new TypeError("Expected form data");
+    const source = await homeService.addReferralSource({
+      name: formData.get("name"),
+      preset: formData.get("preset"),
+      file: formData.get("icon"),
+    });
     refresh();
     return source;
   });

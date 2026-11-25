@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { todayInClinic, formatDate } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 import { summarizeDevices } from "@/lib/devices";
@@ -20,6 +21,8 @@ import {
   needsMaintenanceContact,
   paymentShares,
   referralIcon,
+  presetIconPath,
+  iconFileError,
   warrantyState,
 } from "../homeRules";
 
@@ -363,6 +366,9 @@ function invoiceLinks(links) {
 
 // ---- Referral sources -----------------------------------------------------------------------------------
 
+// Public address of the source-icons bucket (008: anyone may read it), where uploaded logos live.
+const ICON_BASE = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/source-icons`;
+
 async function getReferralTable() {
   const [sources, countRows] = await Promise.all([repo.listReferralSources(), repo.referralCounts()]);
   const counts = new Map(
@@ -373,7 +379,7 @@ async function getReferralTable() {
     id: source.id,
     name: source.name,
     visible: source.visible,
-    icon: referralIcon(source.name),
+    icon: referralIcon(source.name, source.icon_path, ICON_BASE),
     ...(counts.get(source.id) ?? empty),
   }));
   const shown = rows.filter((row) => row.visible);
@@ -423,17 +429,33 @@ function sameSourceName(a, b) {
   return String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
 }
 
-export async function addReferralSource(name) {
+// input: { name, preset, file }: the logo is a drawn preset ("youtube") or an uploaded PNG/WebP, never both missing.
+export async function addReferralSource({ name, preset, file } = {}) {
   const clean = String(name ?? "").trim().replace(/\s+/g, " ");
   if (!clean) throw new ValidationError("Kaynak adını yazın.");
   if (clean.length > 40) throw new ValidationError("Kaynak adı en fazla 40 karakter olabilir.");
+  const hasFile = file && typeof file === "object" && file.size > 0;
+  const presetPath = hasFile ? null : presetIconPath(String(preset ?? ""));
+  if (!hasFile && !presetPath) throw new ValidationError("Kaynağı eklemeden önce bir simge seçin ya da logo yükleyin.");
+  if (hasFile) {
+    const problem = iconFileError(file);
+    if (problem) throw new ValidationError(problem);
+  }
   // "Kaldır" only hides a source (old appointments keep it), so adding the same name again brings that one back
   // instead of hitting the unique name index.
   const existing = (await repo.listAllReferralSourceNames()).find((row) => sameSourceName(row.name, clean));
   if (existing?.active) throw new ValidationError("Bu kaynak zaten listede.");
-  if (existing) return repo.reactivateReferralSource(existing.id, clean);
-  const sortOrder = (await repo.maxReferralSortOrder()) + 1;
-  return repo.insertReferralSource(clean, sortOrder);
+
+  const iconPath = hasFile ? `${randomUUID()}.${file.type === "image/png" ? "png" : "webp"}` : presetPath;
+  if (hasFile) await repo.uploadSourceIcon(iconPath, file);
+  try {
+    if (existing) return await repo.reactivateReferralSource(existing.id, clean, iconPath);
+    return await repo.insertReferralSource(clean, (await repo.maxReferralSortOrder()) + 1, iconPath);
+  } catch (error) {
+    // Without its row nobody points at the file, so it must not stay in Storage.
+    if (hasFile) await repo.removeSourceIcon(iconPath).catch((removeError) => console.error(removeError));
+    throw error;
+  }
 }
 
 // Removing hides the source from the list and the pickers; old appointments keep their source.
