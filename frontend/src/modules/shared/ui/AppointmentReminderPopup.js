@@ -67,7 +67,8 @@ export default function AppointmentReminderPopup() {
         <button
           type="button"
           className="close-reminder"
-          aria-label="Hatırlatmayı kapat"
+          aria-label="Hatırlatmayı beş dakika ertele"
+          title="Beş dakika sonra yeniden göster"
           onClick={() => setReminder(null)}
         >
           ✕

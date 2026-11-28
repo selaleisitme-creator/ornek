@@ -249,9 +249,16 @@ begin
     raise exception 'Unknown appointment reminder offset' using errcode = '23514';
   end if;
 
+  -- Closing the popup releases it after five minutes; sent reminders are never reclaimed.
   insert into public.appointment_reminders (appointment_id, reminder_offset, shown_at)
   values (p_appointment_id, p_reminder_offset, now())
-  on conflict (appointment_id, reminder_offset) do nothing;
+  on conflict (appointment_id, reminder_offset) do update
+     set shown_at = excluded.shown_at
+   where appointment_reminders.sent_at is null
+     and (
+       appointment_reminders.shown_at is null
+       or appointment_reminders.shown_at <= excluded.shown_at - interval '5 minutes'
+     );
   return found;
 end;
 $$;
