@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatMoney, formatMoneyInput, parseMoney } from "@/lib/money";
-import { formatDate, formatDateTime, parseDisplayDate, todayInClinic } from "@/lib/dates";
+import { clinicDateTimeToIso, formatDate, formatDateTime, parseDisplayDate, todayInClinic } from "@/lib/dates";
 import { formatPhone, normalizePhone, splitPhone } from "@/lib/phone";
 import { summarizeDevices } from "@/lib/devices";
 import { normalizeGtin, parseScan } from "@/lib/gs1";
@@ -76,6 +76,12 @@ describe("dates", () => {
     expect(formatDateTime("2026-11-09T11:30:00Z")).toBe("09.11.2026 14:30");
     expect(parseDisplayDate("9.11.2026")).toBe("2026-11-09");
     expect(parseDisplayDate("31.02.2026")).toBeNull();
+  });
+
+  it("converts Istanbul appointment input to the stored instant", () => {
+    expect(clinicDateTimeToIso("2026-11-09", "14:30")).toBe("2026-11-09T11:30:00.000Z");
+    expect(clinicDateTimeToIso("2026-02-30", "14:30")).toBeNull();
+    expect(clinicDateTimeToIso("2026-11-09", "24:00")).toBeNull();
   });
 });
 

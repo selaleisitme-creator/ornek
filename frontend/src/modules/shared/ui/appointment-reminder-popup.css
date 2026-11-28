@@ -1,0 +1,16 @@
+#appReminderPopup[hidden] { display: none !important; }
+#appReminderPopup {
+  position: fixed; right: 22px; bottom: 22px; z-index: 100000; width: min(390px, calc(100vw - 28px));
+  padding: 18px; border: 1px solid #eaf2ff; border-radius: 17px; background: #fffdf7;
+  box-shadow: 0 16px 48px rgba(24, 38, 52, .22); color: #1e2c3b;
+}
+#appReminderPopup .reminder-popup-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+#appReminderPopup h2 { margin: 0 0 5px; font-size: 17px; }
+#appReminderPopup p { margin: 4px 0; color: #657487; font-size: 13px; line-height: 1.5; }
+#appReminderPopup .reminder-popup-tag { display: inline-block; margin-bottom: 8px; padding: 4px 8px; border-radius: 999px; background: #eaf2ff; color: #667085; font-size: 11px; font-weight: 800; }
+#appReminderPopup .reminder-popup-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+#appReminderPopup button { border: 1px solid #dce3e9; border-radius: 9px; background: #fff; padding: 9px 12px; font: inherit; font-size: 12px; font-weight: 750; cursor: pointer; }
+#appReminderPopup button.primary { border-color: #667085; background: #667085; color: #fff; }
+#appReminderPopup button:disabled { opacity: .6; cursor: not-allowed; }
+#appReminderPopup button.close-reminder { flex: none; border: 0; padding: 0 4px; background: transparent; font-size: 23px; color: #69798a; }
+@media (max-width: 520px) { #appReminderPopup { right: 14px; bottom: 14px; } }

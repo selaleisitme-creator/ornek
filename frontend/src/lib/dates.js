@@ -18,6 +18,24 @@ export function todayInClinic(now = new Date()) {
   return `${p.year}-${p.month}-${p.day}`;
 }
 
+// A date and time entered in the panel are Istanbul wall-clock values. Since 2016 the clinic timezone is
+// UTC+3 year-round, so this gives Postgres the corresponding absolute instant.
+export function clinicDateTimeToIso(date, time) {
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(date ?? ""));
+  const timeMatch = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(time ?? ""));
+  if (!dateMatch || !timeMatch) return null;
+
+  const [, yearText, monthText, dayText] = dateMatch;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const check = new Date(Date.UTC(year, month - 1, day));
+  if (check.getUTCFullYear() !== year || check.getUTCMonth() !== month - 1 || check.getUTCDate() !== day) return null;
+
+  const instant = new Date(`${date}T${time}:00+03:00`);
+  return Number.isNaN(instant.getTime()) ? null : instant.toISOString();
+}
+
 // "2026-11-09" or a Date → "09.11.2026".
 export function formatDate(value) {
   if (!value) return "—";

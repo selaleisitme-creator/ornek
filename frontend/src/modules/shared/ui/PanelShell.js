@@ -1,5 +1,6 @@
 import Sidebar from "./Sidebar";
 import { ToastProvider } from "./Toast";
+import AppointmentReminderPopup from "./AppointmentReminderPopup";
 import "./panel-shell.css";
 import "./ui.css";
 
@@ -13,6 +14,7 @@ export default function PanelShell({ children }) {
       <main className="panel-main">
         <ToastProvider>
           <div className="panel-content">{children}</div>
+          <AppointmentReminderPopup />
         </ToastProvider>
       </main>
     </div>
