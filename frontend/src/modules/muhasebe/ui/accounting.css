@@ -1,0 +1,347 @@
+@scope (.accounting) {
+
+:scope{--bg:#f2f6f6;--panel:#fff;--ink:#17324a;--muted:#63798a;--line:#dce6e8;--blue:#244d9c;--teal:#287f72;--red:#bd5148;--shadow:0 10px 28px #17324a0c}*{box-sizing:border-box}:scope{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI",system-ui,sans-serif}.wrap{max-width:1500px;margin:auto;padding:28px}.top{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:22px}.eyebrow{font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--teal)}h1{font-size:28px;line-height:1.2;margin:5px 0 7px}.sub{color:var(--muted);margin:0}.secure{white-space:nowrap;border:1px solid #cbe1d9;background:#eff8f3;color:#216b57;border-radius:999px;padding:9px 13px;font-weight:700}.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}.card,.ledger,.tools{background:var(--panel);border:1px solid var(--line);border-radius:17px;box-shadow:var(--shadow)}.card{padding:18px 20px;min-height:112px}.card small{display:block;color:var(--muted);font-weight:700}.card strong{display:block;font-size:25px;margin-top:7px}.card.income{border-top:3px solid var(--teal)}.card.expense{border-top:3px solid var(--red)}.card.balance{border-top:3px solid var(--blue)}.tools{padding:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}.actions,.filters{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.btn{border:1px solid var(--line);border-radius:11px;padding:10px 14px;background:white;color:var(--ink);font:700 14px/1.3 "Segoe UI",system-ui,sans-serif;cursor:pointer}.btn:hover{border-color:#a9c3cd;background:#f9fcfc}.btn.primary{background:var(--teal);border-color:var(--teal);color:white}.btn.danger{background:#fff7f5;border-color:#f0cfca;color:#a8463d}.filter{border:1px solid var(--line);border-radius:999px;background:#f7f9fa;padding:8px 13px;color:#526b7c;font-weight:700;cursor:pointer}.filter.active{background:#eaf4f1;border-color:#b7d8cd;color:#216b57}.ledger{overflow:hidden}.ledger-head{padding:17px 19px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center}.ledger-head h2{font-size:17px;margin:0}.ledger-head p{margin:3px 0 0;color:var(--muted);font-size:12px}.search{width:min(330px,100%);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;outline:none}.search:focus,.field input:focus,.field textarea:focus{border-color:#6d9a9b;box-shadow:0 0 0 3px #287f7214;outline:0}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:1300px}th{text-align:left;background:#f5f8f9;color:#61778a;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:12px 15px}td{padding:13px 15px;border-top:1px solid #edf1f2;vertical-align:top}tbody tr:hover{background:#fbfdfc}.date{color:#63798a;white-space:nowrap;font-size:12px}.description b{display:block}.description small{display:block;color:var(--muted);margin-top:2px}.pill{display:inline-flex;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:800}.pill.income{background:#e9f5ee;color:#267356}.pill.expense{background:#fff0ed;color:#b34b42}.money{font-weight:750;white-space:nowrap}.pos{color:#267356}.neg{color:#b34b42}.empty{text-align:center;color:var(--muted);padding:35px 14px}.footnote{margin:13px 3px 0;color:var(--muted);font-size:12px}.overlay{position:fixed;inset:0;background:#13263780;display:flex;align-items:center;justify-content:center;padding:18px;z-index:10}.overlay[hidden]{display:none}.dialog{background:#fff;border-radius:18px;width:min(500px,100%);padding:22px;box-shadow:0 24px 75px #10253645}.dialog h2{margin:0 0 5px;font-size:21px}.dialog>p{margin:0 0 18px;color:var(--muted)}.field{display:block;margin:13px 0;color:#4f6678;font-weight:700}.field input,.field textarea,.field select{display:block;width:100%;margin-top:6px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;color:var(--ink)}.field textarea{resize:vertical;min-height:72px}.auto-date{font-size:12px;color:var(--muted);background:#f5f8f9;border-radius:9px;padding:9px 11px}.dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:19px}@media(max-width:760px){.wrap{padding:18px}.top{display:block}.secure{display:inline-block;margin-top:12px}.cards{grid-template-columns:1fr}.tools,.ledger-head{align-items:stretch;flex-direction:column}.search{width:100%}h1{font-size:24px}}
+ .gate{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:20px;background:#eaf0f1}.gate[hidden]{display:none}.gate-card{width:min(420px,100%);background:#fff;border:1px solid var(--line);border-radius:20px;padding:28px;box-shadow:0 18px 60px #17324a22}.gate-card h1{margin:12px 0 6px;font-size:23px}.gate-card p{color:var(--muted)}.gate-icon{display:grid;place-items:center;width:48px;height:48px;border-radius:15px;background:#eaf4f1;font-size:23px}.gate-error{min-height:20px;margin:4px 0;color:#b42318;font-size:13px}.gate-card .btn{width:100%}/* Muhasebe sayfası, uygulamanın lacivert-mavi ve açık gri paletiyle eşitlendi */
+:scope{--bg:#f2f6f7;--panel:#fff;--ink:#183142;--muted:#637987;--line:#dbe5e8;--blue:#244d9c;--teal:#244d9c;--red:#b8514b;--shadow:0 10px 28px rgba(22,48,63,.075)}
+:scope{background:var(--bg);color:var(--ink)}
+.wrap{max-width:1500px;padding:26px 30px 34px}
+.top{position:relative;overflow:hidden;align-items:center;padding:24px 26px;margin-bottom:20px;border:1px solid #d7e5fa;border-left:4px solid #244d9c;border-radius:18px;background:linear-gradient(112deg,#eef4fc 0%,#fff 76%);box-shadow:var(--shadow)}
+.top:after{content:"";position:absolute;right:-45px;top:-85px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,#eaf2ff 0%,rgba(234,242,255,0) 70%);pointer-events:none}
+.top>div,.top>.secure{position:relative;z-index:1}
+.eyebrow{color:#244d9c;letter-spacing:.14em}
+h1{font-size:30px;letter-spacing:-.025em;color:#172b4d}
+.sub{font-size:14px}
+.secure{border-color:#d7e5fa;background:#eaf2ff;color:#244d9c;padding:9px 14px}
+.cards{gap:16px;margin-bottom:18px}
+.card{position:relative;overflow:hidden;min-height:124px;padding:20px 22px;border-radius:17px;transition:transform .18s ease,box-shadow .18s ease}
+.card:hover{transform:translateY(-2px);box-shadow:0 13px 30px rgba(30,55,70,.1)}
+.card:after{content:"";position:absolute;right:-23px;bottom:-46px;width:112px;height:112px;border-radius:50%;opacity:.72}
+.card.income{border:1px solid #d7e9df;border-top:3px solid #33836a;background:linear-gradient(145deg,#fff 45%,#f1f8f3)}
+.card.income:after{background:#e4f2e8}
+.card.expense{border:1px solid #f0dddd;border-top:3px solid #bd5148;background:linear-gradient(145deg,#fff 45%,#fff5f3)}
+.card.expense:after{background:#f9e7e3}
+.card.balance{border:1px solid #d7e5fa;border-top:3px solid #244d9c;background:linear-gradient(145deg,#fff 45%,#f0f5fd)}
+.card.balance:after{background:#e3edfc}
+.card small{position:relative;z-index:1;color:#536b7d;font-size:12px;letter-spacing:.025em}
+.card strong{position:relative;z-index:1;color:#172b4d;font-size:27px;letter-spacing:-.02em}
+.tools{padding:14px 16px;border-radius:16px;background:#fff;box-shadow:var(--shadow)}
+.actions,.filters{gap:8px}
+.btn{border-radius:11px;padding:10px 15px;transition:transform .15s ease,box-shadow .15s ease,background .15s ease}
+.btn:hover{transform:translateY(-1px);box-shadow:0 5px 13px rgba(30,55,70,.09)}
+.btn.primary{background:#244d9c;border-color:#244d9c}
+.btn.primary:hover{background:#1d3f83;border-color:#1d3f83}
+.btn.danger{background:#fff7f6;border-color:#f0d0cc;color:#a8463d}
+.filters{padding:4px;border:1px solid #e1e7ed;border-radius:12px;background:#f4f7fa}
+.filter{border:1px solid transparent;border-radius:9px;background:transparent;padding:8px 13px;color:#536780}
+.filter:hover{background:#fff}
+.filter.active{border-color:#c9d7e8;background:#eaf2ff;color:#244d9c;box-shadow:0 2px 6px rgba(30,55,70,.05)}
+.ledger{border-radius:17px;box-shadow:var(--shadow)}
+.ledger-head{padding:18px 21px;background:linear-gradient(90deg,#f7f9fc,#fff)}
+.ledger-head h2{font-size:18px;color:#172b4d}
+.search{width:min(350px,100%);background:#fff;border-radius:10px}
+.search:focus,.field input:focus,.field textarea:focus,.field select:focus{border-color:#6f8eb8;box-shadow:0 0 0 3px rgba(36,77,156,.12);outline:0}
+.table-wrap{min-height:100px;scrollbar-color:#b7c5d8 #f3f6fa}
+table{min-width:1250px}
+th{position:sticky;top:0;z-index:1;background:#f2f5f9;color:#536780;font-size:10.5px;padding:13px 14px}
+td{padding:12px 14px;border-top-color:#e9edf2}
+tbody tr:nth-child(even){background:#fcfdff}
+tbody tr:hover{background:#f1f6fd}
+.pill.income{background:#e8f4ed;color:#267356}
+.pill.expense{background:#fff0ee;color:#a8463d}
+.footnote{padding:12px 15px;border-left:3px solid #8ba7cb;border-radius:0 9px 9px 0;background:#f1f5fb;line-height:1.55}
+.gate{background:linear-gradient(135deg,#edf2f8,#f5f7fa)}
+.gate-card{border-color:#d9e2ed;border-radius:20px;box-shadow:0 20px 58px rgba(28,54,67,.13)}
+.gate-card h1{font-size:24px}
+.gate-icon{background:#eaf2ff;color:#244d9c}
+.dialog{border:1px solid #dce5ed;border-radius:18px;box-shadow:0 24px 75px rgba(16,37,54,.2)}
+.overlay{background:rgba(23,43,77,.48);backdrop-filter:blur(3px)}
+.field input,.field textarea,.field select{border-radius:10px;background:#fff}
+.auto-date{border:1px solid #e1e8f0;background:#f4f7fb;border-radius:9px}
+@media(max-width:980px){.wrap{padding:20px}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.card.balance{grid-column:1/-1}}
+@media(max-width:760px){.wrap{padding:14px}.top{padding:20px;display:block}.top>.secure{display:inline-flex;margin-top:14px}.cards{grid-template-columns:1fr}.card.balance{grid-column:auto}.tools,.ledger-head{align-items:stretch;flex-direction:column}.actions .btn{flex:1}.search{width:100%}h1{font-size:25px}}/* Muhasebe ekranı iyileştirmeleri */
+.gate-card{width:min(380px,100%);padding:22px 24px;border-radius:18px}
+.gate-icon{width:42px;height:42px;border-radius:13px;font-size:20px}
+.gate-card h1{margin:8px 0 5px;font-size:22px}
+.gate-card p{margin:0 0 12px;font-size:13px}
+.gate-card .field{margin:10px 0 12px;font-size:13px}
+.gate-card .field input{height:44px}
+.gate-card .btn{min-height:44px}
+.gate{background:radial-gradient(ellipse at 50% 48%,#fff 0%,#f5f7fa 55%,#edf2f8 100%)}
+.gate-card{box-shadow:0 14px 40px rgba(23,43,77,.10)}
+.template-box{margin:0 0 16px;padding:13px;border:1px solid #dbe5ed;border-radius:13px;background:#f5f8fc}
+.template-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.template-heading strong{display:block;color:#172b4d;font-size:13px}
+.template-heading small{display:block;margin-top:2px;color:#637987;font-size:11px;font-weight:500}.template-count{margin-left:auto;padding:4px 8px;border-radius:999px;background:#eaf2ff;color:#244d9c;font-size:11px;font-weight:750;white-space:nowrap}
+.template-heading .btn{padding:8px 11px;font-size:12px;white-space:nowrap}
+.template-list{display:grid;gap:8px}
+.template-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 11px;border:1px solid #e1e8f0;border-radius:11px;background:#fff}
+.template-row-info{min-width:0}
+.template-row-info strong{display:block;color:#20364a;font-size:13px}
+.template-row-info small{display:block;margin-top:2px;color:#637987;font-size:11px;overflow-wrap:anywhere}
+.template-row-actions{display:flex;gap:6px;flex:none}
+.template-row-actions .btn{padding:7px 10px;font-size:11px}
+.template-empty{padding:12px;border:1px dashed #c9d7e8;border-radius:10px;color:#637987;background:rgba(255,255,255,.65);font-size:12px}
+.template-editor{margin-top:10px;padding:12px;border:1px solid #d7e5fa;border-radius:11px;background:#fff}
+.template-editor[hidden]{display:none}
+.template-editor h3{margin:0 0 8px;color:#172b4d;font-size:14px}
+.template-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+.template-fields .field{margin:7px 0;font-size:12px}
+.template-fields .field input,.template-fields .field select{padding:9px 10px;font-size:13px}
+.template-editor-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+.template-editor-actions .btn{padding:8px 11px;font-size:12px}
+@media(max-width:600px){.template-heading{align-items:flex-start;flex-direction:column}.template-row{align-items:flex-start;flex-direction:column}.template-row-actions{width:100%}.template-row-actions .btn{flex:1}.template-fields{grid-template-columns:1fr}}
+.payment-preview table{position:relative;z-index:1}.payment-preview th:nth-child(2){background:#e8f4ed;color:#247352}.payment-preview th:nth-child(3){background:#fbece9;color:#a93b32}.payment-preview th:first-child{background:#eaf1fc;color:#234a91}.payment-preview td{background:#ffffffcc}.payment-preview small{color:#234a91}
+:scope { max-width: 1500px; margin: auto; padding: clamp(12px, 2.5vw, 28px); }
+.top { flex-wrap: wrap; align-items: center; }
+.accounting-period, .ledger-head form { display: flex; align-items: end; gap: 8px; }
+.accounting-period label { display: grid; gap: 4px; }
+.accounting-period input { min-width: 0; width: auto; }
+.payment-preview table { width: 100%; min-width: 0; margin-top: 7px; font-size: 12px; }
+.payment-preview :is(th,td) { padding: 4px; }
+.payment-preview :is(th,td):not(:first-child) { text-align: right; }
+.accounting-forms { display: flex; flex-wrap: wrap; gap: 8px; }
+.accounting-forms summary { list-style: none; }
+.accounting-forms details form { display: grid; gap: 8px; margin-top: 8px; }
+.accounting-forms label { display: grid; gap: 4px; }
+.filters a { text-decoration: none; }
+.ledger nav { display: flex; gap: 12px; padding: 12px; }
+@media (min-width: 1100px) { .cards { grid-template-columns: repeat(4,minmax(0,1fr)); } }
+@media (max-width: 1099px) { .cards { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 520px) { .cards { grid-template-columns: 1fr; } .ledger-head form { width: 100%; } }
+.accounting-period .search { width: 150px; min-height: 42px; padding: 8px 12px; }
+.top .accounting-period .primary { background: #244a97; color: #fff; opacity: 1; }
+.payment-preview thead th { white-space: nowrap; }
+.payment-preview tbody th.payment-method { background: #ffffffcc; color: inherit; font-weight: 500; text-transform: none; letter-spacing: normal; }
+.payment-preview tbody td { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.payment-preview tbody th { overflow-wrap: anywhere; }
+.payment-preview table { font-size: clamp(10px, .87vw, 12px); }
+.cards .card { min-width: 0; }
+.accounting-search-submit:not(:focus-visible) { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
+.accounting-management { position: relative; }
+.accounting-management > summary { cursor: pointer; padding: 9px; color: var(--muted); }
+.accounting-management > div { position: absolute; z-index: 3; width: min(280px, 75vw); padding: 12px; background: white; border: 1px solid var(--line); border-radius: 12px; }
+.accounting-management > div > details + details { margin-top: 8px; }
+.accounting-month { position: relative; display: block; }
+.accounting-month > span { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 145px; min-height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: white; }
+.accounting-month input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.accounting-month:focus-within { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 10px; }
+.top .accounting-period .primary { height: 42px; border-radius: 10px; background: #244a97; box-shadow: none; }
+.top .accounting-period .btn.primary, .tools .accounting-forms .btn.primary {
+  background: #234a91;
+  border-color: #234a91;
+  color: #fff;
+  opacity: 1;
+  box-shadow: none;
+}
+.top .accounting-period .btn.primary:hover, .tools .accounting-forms .btn.primary:hover {
+  background: #1d3d78;
+}
+.ledger .table-wrap table { font-size: 13px; line-height: 1.4; }
+.ledger .table-wrap th { font-size: 11px; color: #344d65; }
+.ledger .table-wrap :is(th, td) { padding: 9px 11px; }
+.ledger .table-wrap td { color: #17324a; }
+.ledger .table-wrap td:nth-child(2),
+.ledger .table-wrap td:nth-child(3),
+.ledger .table-wrap td:nth-child(9),
+.ledger .table-wrap td:nth-child(11),
+.ledger .table-wrap td:nth-child(12) { white-space: nowrap; }
+.ledger .table-wrap td:nth-child(4) { min-width: 155px; }
+.ledger-head form { width: min(340px, 100%); }
+.ledger-head .search { width: 100%; font-size: 13px; }
+.ledger nav { font-size: 13px; }
+.top .accounting-period button.btn.primary, .tools .accounting-forms button.btn.primary { background: #234a91; border-color: #234a91; }
+.accounting-dialog { width: min(440px, calc(100% - 32px)); max-height: 85vh; padding: 22px; border: 1px solid #dce6e8; border-radius: 16px; color: #17324a; }
+.accounting-dialog::backdrop { background: #17324a66; }
+.accounting-dialog header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.accounting-dialog form { display: grid; gap: 10px; margin-top: 10px; }
+.accounting-dialog label { font-size: 13px; }
+.accounting-dialog :is(input:not([type=hidden]),select) { box-sizing: border-box; width: 100%; padding: 8px 10px; border: 1px solid #cbd9e2; border-radius: 8px; font: inherit; background: #fff; }
+.accounting-management > div { display: grid; gap: 8px; }
+.top .accounting-period .primary, .tools .accounting-forms .primary { background: #234a91; color: #fff; opacity: 1; }
+.top .accounting-period button.btn.primary {
+  background: #234a91 !important;
+  border-color: #234a91 !important;
+  opacity: 1;
+  filter: none;
+}
+.accounting-dialog { margin: auto; width: min(520px, calc(100% - 32px)); }
+.accounting-dialog h2 { margin: 0 0 4px; font-size: 21px; }
+.accounting-dialog > p { margin: 0 0 12px; color: #52677b; }
+.accounting-dialog .template-box { padding: 12px; margin-bottom: 12px; }
+.accounting-dialog .template-box small { display: block; }
+.accounting-template { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.accounting-dialog textarea { width: 100%; min-height: 56px; }
+}
+
+.accounting .accounting-period button.btn.primary {
+  background: #234a91 !important;
+  background-image: none !important;
+  border-color: #234a91 !important;
+  color: #fff !important;
+  opacity: 1 !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+.accounting .accounting-period button.btn.primary::before,
+.accounting .accounting-period button.btn.primary::after {
+  content: none !important;
+}.accounting .accounting-period { position: relative; z-index: 1; }
+
+.accounting .ledger .ledger-compact table { width: 100%; min-width: 0; table-layout: fixed; font-size: 12px; }
+.accounting .ledger .ledger-compact :is(th,td) { min-width: 0; padding: 8px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ledger-compact td button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font: inherit; color: #234a91; border: 0; background: transparent; padding: 0; cursor: pointer; }
+
+.accounting .ledger .ledger-compact .ledger-detail > td {
+  background: #edf4fc;
+  white-space: normal;
+  padding: 14px;
+}
+.accounting .ledger-detail dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.accounting .ledger-detail dt { font-weight: 700; color: #234a91; }
+.accounting .ledger-detail dd { margin: 3px 0 0; overflow-wrap: anywhere; }
+.accounting .ledger .ledger-compact {
+  max-height: min(60vh, 560px);
+  overflow: auto;
+}
+
+.accounting .ledger .ledger-compact thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f0f4f8;
+}
+@supports (appearance: base-select) {
+  .accounting .accounting-period select,
+  .accounting .accounting-period select::picker(select) {
+    appearance: base-select;
+  }
+  .accounting .accounting-period select {
+    min-height: 42px;
+    min-width: 90px;
+    padding: 8px 10px;
+    gap: 12px;
+    align-items: center;
+    border: 1px solid #cfdded;
+    border-radius: 10px;
+    background: #fff;
+    color: #17324a;
+    cursor: pointer;
+  }
+  .accounting .accounting-period select[name="periodMonth"] { min-width: 114px; }
+  .accounting .accounting-period select::picker-icon { color: #234a91; }
+  .accounting .accounting-period select::picker(select) {
+    max-height: 240px;
+    overflow: auto;
+    margin-top: 6px;
+    padding: 5px;
+    border: 1px solid #cfdded;
+    border-radius: 12px;
+    background: #fff;
+    color: #17324a;
+    box-shadow: 0 8px 24px #17324a26;
+  }
+  .accounting .accounting-period option {
+    padding: 7px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+  .accounting .accounting-period option:is(:hover,:focus,:checked) {
+    background: #eaf2ff;
+    color: #234a91;
+  }
+}
+.accounting .accounting-dialog:has(> .template-box) {
+  width: min(560px, calc(100% - 32px));
+  padding: clamp(16px, 4vw, 26px);
+  box-shadow: 0 24px 75px rgba(16, 37, 54, .2);
+}
+
+.accounting .accounting-dialog:has(> .template-box) > p {
+  margin-bottom: 16px;
+}
+
+.accounting .accounting-dialog > .template-box .accounting-template {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border: 1px solid #dbe5ed;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.accounting .accounting-dialog:has(> .template-box) > form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.accounting .accounting-dialog:has(> .template-box) > form > :not(label),
+.accounting .accounting-dialog:has(> .template-box) label:has(> :is([name="name"], [name="category"], textarea)) {
+  grid-column: 1 / -1;
+}
+
+.accounting .accounting-dialog:has(> .template-box) label {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  color: #52677b;
+  font-weight: 600;
+}
+
+.accounting .accounting-dialog:has(> .template-box) label > :is(input, select, textarea) {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid #cbd9e2;
+  border-radius: 8px;
+  background: #fff;
+  color: #17324a;
+  font: inherit;
+  font-weight: 400;
+}
+
+.accounting .accounting-dialog:has(> .template-box) textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+.accounting .accounting-dialog:has(> .template-box) .dialog-actions {
+  margin-top: 0;
+  padding-top: 12px;
+  border-top: 1px solid #dbe5ed;
+}
+
+@media (max-width: 460px) {
+  .accounting .accounting-dialog:has(> .template-box) > form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
+.accounting .accounting-period a.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-end;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid #c9d8ed;
+  border-radius: 11px;
+  background: #eef4fd;
+  color: #234a91;
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.accounting .accounting-period a.btn:hover {
+  background: #e2edfc;
+  border-color: #a8bfe0;
+}
+
+.accounting .accounting-period a.btn:focus-visible {
+  outline: 2px solid #234a91;
+  outline-offset: 2px;
+}
